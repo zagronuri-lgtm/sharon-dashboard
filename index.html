@@ -605,6 +605,8 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.08); }
     <button class="map-btn" data-color="#f59e0b" style="border-color:#f59e0b" onclick="toggleLayer('lineC', this)">קו C — מזין M1</button>
     <button class="map-btn" data-color="#8b5cf6" style="border-color:#8b5cf6" onclick="toggleLayer('lineD', this)">קו D — נתניה דרום</button>
     <button class="map-btn" data-color="#10b981" style="border-color:#10b981" onclick="toggleLayer('heatmap', this)">מפת חום</button>
+    <button class="map-btn" data-color="#ef4444" style="border-color:#ef4444" onclick="toggleLayer('competitors', this)">מתחרים</button>
+    <button class="map-btn" data-color="#f59e0b" style="border-color:#f59e0b" onclick="toggleLayer('deviations', this)">🔀 הסטות מוצעות</button>
   </div>
   <div id="map"></div>
 </div>
@@ -1137,6 +1139,128 @@ function initMap() {
     }
   });
   layers.heatmap = heatGroup;
+
+  // ========= COMPETITORS LAYER =========
+  const compGroup = L.layerGroup();
+  // Kavim lines competing on Netanya-TA corridor
+  const competitors = [
+    { name: 'קווים 635 (בת חפר→ת"א)', color: '#ef4444', pax: 1757,
+      coords: [[34.87, 32.36], [34.86, 32.33], [34.83, 32.25], [34.80, 32.17], [34.78, 32.07]] },
+    { name: 'קווים 632 (חריש→ת"א)', color: '#ef4444', pax: 1583,
+      coords: [[35.04, 32.46], [34.95, 32.38], [34.86, 32.33], [34.80, 32.17], [34.78, 32.07]] },
+    { name: 'קווים 299 (אום אל פחם→ת"א)', color: '#ef4444', pax: 1188,
+      coords: [[35.15, 32.52], [35.04, 32.46], [34.86, 32.33], [34.78, 32.07]] },
+    { name: 'רכבת — קו החוף (נתניה→הרצליה→ת"א)', color: '#dc2626', pax: 0,
+      coords: [[34.86, 32.33], [34.84, 32.27], [34.80, 32.16], [34.79, 32.08]] },
+    { name: 'רכבת — קו השרון (כ"ס→פ"ת→ת"א)', color: '#dc2626', pax: 0,
+      coords: [[34.91, 32.18], [34.88, 32.19], [34.88, 32.09], [34.79, 32.08]] }
+  ];
+  competitors.forEach(c => {
+    const latlngs = c.coords.map(p => [p[1], p[0]]);
+    L.polyline(latlngs, { color: c.color, weight: 3, opacity: 0.7, dashArray: '4 8' })
+      .bindPopup(`<strong>מתחרה: ${c.name}</strong>${c.pax ? '<br>נוסעים/שבוע: ' + c.pax.toLocaleString() : '<br>רכבת ישראל'}`)
+      .addTo(compGroup);
+  });
+  layers.competitors = compGroup;
+
+  // ========= ROUTE DEVIATIONS LAYER =========
+  const devGroup = L.layerGroup();
+  const deviations = [
+    {
+      id: 1, line: '601', corridor: 'נתניה↔ת"א',
+      title: 'הסטת קו 601 דרך עיר ימים/אחיסמך',
+      reason: 'מתחרים: קווים 635 + רכבת החוף. אלפי יח"ד חדשות בדרום נתניה ללא שירות ישיר',
+      expected: '+800-1,200 נוסעים/שבוע',
+      currentPath: [[34.86, 32.33], [34.85, 32.28], [34.83, 32.20], [34.80, 32.16], [34.78, 32.08]],
+      deviationPath: [[34.86, 32.33], [34.84, 32.31], [34.83, 32.28], [34.83, 32.20], [34.80, 32.16], [34.78, 32.08]],
+      deviationZone: [34.84, 32.30],
+      color: '#f59e0b'
+    },
+    {
+      id: 2, line: '608', corridor: 'נתניה↔ת"א',
+      title: 'הסטת קו 608 דרך כפר יונה',
+      reason: 'מתחרה: רכבת החוף (49% מנוסעי 608 יכולים לנסוע ברכבת). הסטה דרך כפר יונה תלכוד אוכלוסייה ללא חלופה',
+      expected: '+500-800 נוסעים/שבוע (נטו אחרי איבוד)',
+      currentPath: [[34.86, 32.33], [34.85, 32.27], [34.80, 32.16], [34.78, 32.08]],
+      deviationPath: [[34.86, 32.33], [34.88, 32.32], [34.89, 32.30], [34.87, 32.27], [34.80, 32.16], [34.78, 32.08]],
+      deviationZone: [34.88, 32.31],
+      color: '#f59e0b'
+    },
+    {
+      id: 3, line: '91', corridor: 'הרצליה↔ת"א',
+      title: 'הסטת קו 91 דרך הרצליה פיתוח',
+      reason: 'מתחרה: רכבת הרצליה. הרצליה פיתוח = אלפי משרות הייטק, עובדים מגיעים ברכב פרטי בהיעדר שירות אחרון-מייל',
+      expected: '+1,000-1,500 נוסעים/שבוע',
+      currentPath: [[34.79, 32.16], [34.79, 32.13], [34.79, 32.08]],
+      deviationPath: [[34.79, 32.16], [34.79, 32.165], [34.78, 32.155], [34.77, 32.15], [34.79, 32.13], [34.79, 32.08]],
+      deviationZone: [34.78, 32.155],
+      color: '#f59e0b'
+    },
+    {
+      id: 4, line: '575', corridor: 'כ"ס↔ת"א',
+      title: 'הסטת קו 575 דרך הוד השרון מזרח',
+      reason: 'הוד השרון = ישוב פרוורי עם קישוריות חלשה. שכונות מזרח ללא גישה לקו ישיר לת"א',
+      expected: '+600-900 נוסעים/שבוע',
+      currentPath: [[34.91, 32.18], [34.88, 32.16], [34.85, 32.13], [34.79, 32.08]],
+      deviationPath: [[34.91, 32.18], [34.90, 32.16], [34.89, 32.155], [34.88, 32.15], [34.85, 32.13], [34.79, 32.08]],
+      deviationZone: [34.89, 32.155],
+      color: '#f59e0b'
+    },
+    {
+      id: 5, line: '532', corridor: 'ר"ה↔ת"א',
+      title: 'הסטת קו 532 דרך גלילות/תע"ש',
+      reason: 'פארק תעסוקה גלילות/תע"ש = עשרות אלפי עובדים. אין קו ישיר מר"ה. רוב מגיעים ברכב',
+      expected: '+700-1,100 נוסעים/שבוע',
+      currentPath: [[34.84, 32.15], [34.81, 32.12], [34.79, 32.08]],
+      deviationPath: [[34.84, 32.15], [34.82, 32.14], [34.80, 32.125], [34.79, 32.115], [34.79, 32.08]],
+      deviationZone: [34.81, 32.13],
+      color: '#f59e0b'
+    },
+    {
+      id: 6, line: '47', corridor: 'רעננה↔ת"א',
+      title: 'הסטת קו 47 דרך פארק תעסוקה רעננה',
+      reason: 'פארק תעסוקה רעננה = ~20,000 משרות. קו 47 עובר בסמוך אך לא נכנס. תחרות: רכבת רעננה דרום',
+      expected: '+800-1,200 נוסעים/שבוע',
+      currentPath: [[34.87, 32.19], [34.85, 32.17], [34.82, 32.14], [34.79, 32.08]],
+      deviationPath: [[34.87, 32.19], [34.86, 32.185], [34.855, 32.178], [34.85, 32.17], [34.82, 32.14], [34.79, 32.08]],
+      deviationZone: [34.858, 32.182],
+      color: '#f59e0b'
+    }
+  ];
+
+  deviations.forEach(d => {
+    // Current path (gray, thin)
+    L.polyline(d.currentPath.map(p => [p[1], p[0]]), {
+      color: '#64748b', weight: 2, opacity: 0.5
+    }).bindPopup(`<strong>קו ${d.line} — מסלול נוכחי</strong>`).addTo(devGroup);
+
+    // Deviation path (orange, thick, animated dash)
+    L.polyline(d.deviationPath.map(p => [p[1], p[0]]), {
+      color: d.color, weight: 5, opacity: 0.9, dashArray: '10 6'
+    }).bindPopup(
+      `<div style="direction:rtl;min-width:220px">` +
+      `<strong style="color:#f59e0b">🔀 ${d.title}</strong><br><br>` +
+      `<strong>מסדרון:</strong> ${d.corridor}<br>` +
+      `<strong>סיבה:</strong> ${d.reason}<br>` +
+      `<strong>צפי:</strong> <span style="color:#10b981">${d.expected}</span>` +
+      `</div>`
+    ).addTo(devGroup);
+
+    // Deviation zone marker (pulsing circle)
+    L.circleMarker([d.deviationZone[1], d.deviationZone[0]], {
+      radius: 14, fillColor: '#f59e0b', fillOpacity: 0.25, color: '#f59e0b', weight: 2
+    }).addTo(devGroup);
+    // Label
+    L.marker([d.deviationZone[1], d.deviationZone[0]], {
+      icon: L.divIcon({
+        className: 'dev-label',
+        html: `<span style="background:rgba(245,158,11,0.9);color:#000;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🔀 קו ${d.line}</span>`,
+        iconSize: [80, 20], iconAnchor: [40, -10]
+      })
+    }).addTo(devGroup);
+  });
+
+  layers.deviations = devGroup;
 }
 
 function toggleLayer(name, btn) {
