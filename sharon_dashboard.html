@@ -1,0 +1,2160 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דשבורד ניתוח רשת תחבורה ציבורית — אזור השרון</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --bg-primary: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --accent-orange: #f59e0b;
+  --accent-purple: #8b5cf6;
+  --border: #334155;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Segoe UI', Arial, sans-serif;
+  line-height: 1.6;
+  direction: rtl;
+}
+.container { max-width: 1440px; margin: 0 auto; padding: 0 20px; }
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border-bottom: 2px solid var(--accent-blue);
+  padding: 24px 0;
+  text-align: center;
+}
+.header h1 { font-size: 1.8rem; color: var(--accent-blue); margin-bottom: 6px; }
+.header .subtitle { color: var(--text-secondary); font-size: 0.9rem; }
+
+/* Filter Bar */
+.filter-bar {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+.filter-bar .container { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.filter-bar label { color: var(--text-secondary); font-size: 0.85rem; }
+.filter-bar select {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* KPI Cards */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  transition: transform 0.2s, border-color 0.2s;
+  position: relative;
+}
+.kpi-card:hover { transform: translateY(-2px); border-color: var(--accent-blue); }
+.kpi-card .kpi-value { font-size: 1.8rem; font-weight: 700; margin: 8px 0 4px; }
+.kpi-card .kpi-label { color: var(--text-secondary); font-size: 0.8rem; }
+.kpi-card .kpi-icon { font-size: 1.4rem; }
+
+/* Sections */
+.section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin: 20px 0;
+  padding: 24px;
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+.section-header h2 { font-size: 1.2rem; color: var(--accent-blue); }
+.section-number {
+  background: var(--accent-blue);
+  color: white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Info Tooltip */
+.info-btn {
+  background: transparent;
+  border: 1.5px solid var(--text-muted);
+  color: var(--text-muted);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: auto;
+  flex-shrink: 0;
+  position: relative;
+}
+.info-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+.info-tooltip {
+  display: none;
+  position: fixed;
+  background: #0f172a;
+  border: 1px solid var(--accent-blue);
+  border-radius: 8px;
+  padding: 14px 16px;
+  width: 340px;
+  max-width: 90vw;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  z-index: 9999;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+
+/* Grid Layouts */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.chart-container { position: relative; height: 350px; }
+.chart-container-sm { position: relative; height: 260px; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+thead th {
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  padding: 10px 8px;
+  text-align: right;
+  position: sticky;
+  top: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--border);
+}
+thead th:hover { color: var(--accent-blue); }
+tbody td { padding: 8px; border-bottom: 1px solid var(--border); }
+tbody tr:hover { background: rgba(59, 130, 246, 0.08); }
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-red { background: rgba(239,68,68,0.2); color: #fca5a5; }
+.badge-orange { background: rgba(245,158,11,0.2); color: #fcd34d; }
+.badge-green { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+.badge-blue { background: rgba(59,130,246,0.2); color: #93c5fd; }
+.badge-purple { background: rgba(139,92,246,0.2); color: #c4b5fd; }
+
+/* Map */
+#map { height: 500px; border-radius: 8px; }
+.map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.map-btn {
+  background: var(--bg-primary);
+  border: 2px solid var(--border);
+  color: var(--text-secondary);
+  padding: 8px 18px;
+  border-radius: 24px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+.map-btn:hover { filter: brightness(1.2); transform: translateY(-1px); }
+.map-btn.active { color: #fff; font-weight: 600; }
+
+/* Gap Cards */
+.gap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.gap-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  border-right: 4px solid;
+}
+.gap-card h3 { font-size: 1rem; margin-bottom: 8px; }
+.gap-card .gap-detail { color: var(--text-secondary); font-size: 0.85rem; margin: 4px 0; }
+
+/* Proposed Line Cards */
+.line-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  border-top: 3px solid;
+}
+.line-card h3 { font-size: 1rem; }
+.line-card .line-detail { color: var(--text-secondary); font-size: 0.82rem; margin: 3px 0; }
+.line-card .line-stat { display: inline-block; margin-left: 16px; }
+
+/* Timeline */
+.timeline { display: flex; gap: 0; margin: 16px 0; }
+.timeline-phase {
+  flex: 1;
+  padding: 16px;
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+}
+.timeline-phase h4 { margin-bottom: 8px; }
+.timeline-phase ul { list-style: none; text-align: right; font-size: 0.82rem; color: var(--text-secondary); }
+.timeline-phase li { margin: 4px 0; }
+.timeline-phase .phase-cost { margin-top: 8px; font-weight: 600; font-size: 0.9rem; }
+
+/* KPI Progress */
+.kpi-table td:last-child { text-align: center; }
+.progress-bar {
+  height: 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.progress-fill { height: 100%; border-radius: 4px; }
+
+/* Trade-off */
+.tradeoff-grid { display: grid; grid-template-columns: 1fr 80px 1fr; gap: 16px; align-items: start; }
+.tradeoff-arrow { text-align: center; font-size: 2rem; color: var(--accent-blue); padding-top: 40px; }
+
+/* Claude Bot Bar */
+.claude-bar {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 0;
+}
+.claude-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.claude-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.claude-icon { flex-shrink: 0; }
+.claude-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #D97757;
+}
+.claude-sub {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin-right: 4px;
+}
+.claude-input-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.claude-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.claude-chip {
+  background: rgba(217,119,87,0.1);
+  border: 1px solid rgba(217,119,87,0.35);
+  color: #e8a88a;
+  padding: 5px 14px;
+  border-radius: 18px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.claude-chip:hover {
+  background: rgba(217,119,87,0.25);
+  border-color: #D97757;
+  color: #fff;
+}
+.claude-input-row {
+  display: flex;
+  gap: 8px;
+}
+.claude-input-row input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(217,119,87,0.3);
+  color: var(--text-primary);
+  border-radius: 22px;
+  padding: 9px 18px;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.claude-input-row input:focus { border-color: #D97757; }
+.claude-input-row input::placeholder { color: var(--text-muted); }
+.claude-send {
+  background: #D97757;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.2s;
+  flex-shrink: 0;
+}
+.claude-send:hover { background: #c4684a; transform: scale(1.08); }
+
+/* Claude Answer Area */
+.claude-answer-area {
+  margin-top: 14px;
+  background: rgba(217,119,87,0.06);
+  border: 1px solid rgba(217,119,87,0.2);
+  border-radius: 14px;
+  padding: 16px;
+  animation: fadeSlide 0.3s ease;
+}
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.claude-answer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(217,119,87,0.15);
+}
+.claude-answer-header span {
+  color: #e8a88a;
+  font-size: 0.85rem;
+  font-weight: 600;
+  flex: 1;
+}
+.claude-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.claude-close:hover { color: var(--text-primary); }
+.claude-answer-text {
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  line-height: 1.7;
+  margin-bottom: 12px;
+  white-space: pre-line;
+}
+.claude-followups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.claude-followup {
+  background: rgba(217,119,87,0.08);
+  border: 1px solid rgba(217,119,87,0.25);
+  color: #e8a88a;
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.claude-followup:hover {
+  background: rgba(217,119,87,0.2);
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .claude-row { flex-direction: column; align-items: stretch; }
+  .claude-brand { justify-content: center; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .two-col, .three-col, .tradeoff-grid { grid-template-columns: 1fr; }
+  .timeline { flex-direction: column; }
+  .chat-panel { width: calc(100% - 48px); left: 24px; }
+  .header h1 { font-size: 1.3rem; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.station-label span {
+  background: rgba(30,41,59,0.85);
+  color: #fcd34d;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--accent-blue) !important;
+}
+.leaflet-popup-tip { background: #ffffff !important; }
+.leaflet-popup-content { font-size: 0.85rem !important; direction: rtl !important; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="container">
+    <h1>דשבורד ניתוח רשת תחבורה ציבורית — מטרופולין אזור השרון</h1>
+    <div class="subtitle">מבוסס על סקר On-Board מטרופולין ת"א (2020-2022) | נתיבי איילון / משרד התחבורה | <span id="headerDate"></span> <span id="headerClock" style="color:var(--accent-blue);font-weight:600;font-variant-numeric:tabular-nums;direction:ltr;display:inline-block"></span></div>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="filter-bar">
+  <div class="container">
+    <label>סינון עיר:</label>
+    <select id="cityFilter" onchange="applyFilters()">
+      <option value="all">הכל</option>
+    </select>
+    <label>אשכול:</label>
+    <select id="clusterFilter" onchange="applyFilters()">
+      <option value="all">הכל</option>
+      <option value="שרון חולון מרחבי">שרון חולון מרחבי</option>
+      <option value="השרון">השרון</option>
+    </select>
+  </div>
+</div>
+
+<!-- Claude Bot Bar -->
+<div class="claude-bar">
+  <div class="container">
+    <div class="claude-row">
+      <div class="claude-brand">
+        <svg class="claude-icon" viewBox="0 0 256 256" width="28" height="28"><path d="M128 0C57.3 0 0 57.3 0 128s57.3 128 128 128 128-57.3 128-128S198.7 0 128 0z" fill="none"/><g transform="translate(38,38) scale(0.7)"><path d="M128 12L140.8 67.2 196 54.4 153.6 102.4 204.8 128 153.6 153.6 196 201.6 140.8 188.8 128 244 115.2 188.8 60 201.6 102.4 153.6 51.2 128 102.4 102.4 60 54.4 115.2 67.2Z" fill="#D97757"/></g></svg>
+        <span class="claude-title">Claude</span>
+        <span class="claude-sub">שאלות על הנתונים</span>
+      </div>
+      <div class="claude-input-area">
+        <div class="claude-suggestions" id="claudeSuggestions">
+          <button class="claude-chip" onclick="claudeAsk(this.textContent)">מהו הקו העמוס ביותר?</button>
+          <button class="claude-chip" onclick="claudeAsk(this.textContent)">מתי שעת השיא?</button>
+          <button class="claude-chip" onclick="claudeAsk(this.textContent)">מה הפער הכי חשוב?</button>
+          <button class="claude-chip" onclick="claudeAsk(this.textContent)">כמה נוסעים בשרון?</button>
+          <button class="claude-chip" onclick="claudeAsk(this.textContent)">למה צריך לבטל קווים?</button>
+        </div>
+        <div class="claude-input-row">
+          <input type="text" id="claudeInput" placeholder="שאלו שאלה על הנתונים..." onkeydown="if(event.key==='Enter')claudeAsk()">
+          <button class="claude-send" onclick="claudeAsk()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Answer area (hidden until question asked) -->
+    <div class="claude-answer-area" id="claudeAnswerArea" style="display:none">
+      <div class="claude-answer-header">
+        <svg class="claude-icon-sm" viewBox="0 0 256 256" width="20" height="20"><g transform="translate(38,38) scale(0.7)"><path d="M128 12L140.8 67.2 196 54.4 153.6 102.4 204.8 128 153.6 153.6 196 201.6 140.8 188.8 128 244 115.2 188.8 60 201.6 102.4 153.6 51.2 128 102.4 102.4 60 54.4 115.2 67.2Z" fill="#D97757"/></g></svg>
+        <span id="claudeQuestionEcho"></span>
+        <button class="claude-close" onclick="claudeClose()">&times;</button>
+      </div>
+      <div class="claude-answer-text" id="claudeAnswerText"></div>
+      <div class="claude-followups" id="claudeFollowups"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- KPI Cards -->
+<div class="kpi-grid" id="kpiGrid"></div>
+
+<!-- Live Data Section -->
+<div class="section" id="secLive">
+  <div class="section-header">
+    <span class="section-number" style="background:var(--accent-green)">L</span>
+    <h2>נתונים חיים — data.gov.il</h2>
+    <span class="badge badge-green" id="apiStatus">טוען...</span>
+    <span style="color:var(--text-muted);font-size:0.8rem;margin-right:8px" id="apiTimestamp"></span>
+    <span style="color:var(--accent-green);font-size:0.85rem;font-weight:600;font-variant-numeric:tabular-nums;direction:ltr;display:inline-block" id="liveClock"></span>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">נתונים בזמן אמת מ-API של data.gov.il: קווים פעילים בשרון, נוסעים בתחנות, נסיעות מתוכננות ודיוק רכבת. הנתונים מתעדכנים בכל טעינה.</div>
+    </button>
+  </div>
+
+  <!-- Live KPI row -->
+  <div class="kpi-grid" id="liveKpiGrid" style="margin-bottom:20px;"></div>
+
+  <div class="two-col">
+    <!-- Left: Current bus routes -->
+    <div>
+      <h3 style="font-size:0.95rem;margin-bottom:10px;color:var(--accent-green)">קווים פעילים בשרון — רשת נוכחית 2025</h3>
+      <div style="overflow-y:auto;max-height:340px;">
+        <table id="liveRoutesTable">
+          <thead><tr><th>קו</th><th>מפעיל</th><th>מוצא</th><th>יעד</th><th>נוסעים/שב</th><th>ק"מ/שב</th><th>מהירות</th></tr></thead>
+          <tbody><tr><td colspan="7" style="text-align:center;color:var(--text-muted)">טוען נתונים...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Right: Station passenger chart + Train performance -->
+    <div>
+      <h3 style="font-size:0.95rem;margin-bottom:10px;color:var(--accent-orange)">עולים יומיים — תחנות שרון (2025)</h3>
+      <div class="chart-container-sm"><canvas id="liveStationChart"></canvas></div>
+      <h3 style="font-size:0.95rem;margin:16px 0 10px;color:var(--accent-purple)">דיוק רכבת ישראל — תחנות שרון <span class="badge badge-green" style="font-size:0.65rem">data.gov.il חי</span></h3>
+      <div style="overflow-y:auto;max-height:280px;">
+        <table id="liveTrainTable">
+          <thead><tr><th>תחנה</th><th>בזמן</th><th>איחור</th><th>% דיוק</th></tr></thead>
+          <tbody><tr><td colspan="4" style="text-align:center;color:var(--text-muted)">טוען...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 1: Top Lines -->
+<div class="section" id="sec1">
+  <div class="section-header">
+    <span class="section-number">1</span>
+    <h2>קווים מובילים לפי נוסעים</h2>
+    <span class="badge badge-green" style="font-size:0.7rem">data.gov.il</span>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">15 הקווים העמוסים ביותר באזור השרון — נתונים חיים מ-data.gov.il (אותו מקור כמו markav.net). נוסעים/שבוע, ק"מ/שבוע, מהירות ממוצעת ויעילות (נוסעים לכל 100 ק"מ).</div>
+    </button>
+  </div>
+  <div class="two-col">
+    <div class="chart-container"><canvas id="topLinesChart"></canvas></div>
+    <div style="overflow-x:auto;max-height:380px;overflow-y:auto;">
+      <table id="topLinesTable">
+        <thead><tr><th>#</th><th>קו</th><th>נוסעים/שב</th><th>ק"מ/שב</th><th>מהירות</th><th>נוס/100ק"מ</th><th>אשכול</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Section 2: Map -->
+<div class="section" id="sec2">
+  <div class="section-header">
+    <span class="section-number">2</span>
+    <h2>מפה אינטראקטיבית — תחנות ושכבות</h2>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">מפה אינטראקטיבית של תחנות האוטובוס באזור השרון. גודל העיגול = מספר העולים. הפעילו שכבות נוספות לצפייה בגבולות, זרימות OD וקווים מוצעים חדשים.</div>
+    </button>
+  </div>
+  <div class="map-controls">
+    <button class="map-btn active" data-color="#3b82f6" style="border-color:#3b82f6;background:rgba(59,130,246,0.25);color:#fff" onclick="toggleLayer('stations', this)">תחנות</button>
+    <button class="map-btn" data-color="#f59e0b" style="border-color:#f59e0b" onclick="toggleLayer('topStations', this)">תחנות מובילות</button>
+    <button class="map-btn" data-color="#64748b" style="border-color:#64748b" onclick="toggleLayer('boundaries', this)">גבולות ערים</button>
+    <button class="map-btn" data-color="#f59e0b" style="border-color:#f59e0b" onclick="toggleLayer('odFlows', this)">זרימות OD</button>
+    <button class="map-btn" data-color="#8b5cf6" style="border-color:#8b5cf6" onclick="toggleLayer('odInternal', this)">OD פנים-שרוני</button>
+    <button class="map-btn" data-color="#3b82f6" style="border-color:#3b82f6" onclick="toggleLayer('lineA', this)">קו A — שרון מהיר</button>
+    <button class="map-btn" data-color="#10b981" style="border-color:#10b981" onclick="toggleLayer('lineB', this)">קו B — הוד-רבין</button>
+    <button class="map-btn" data-color="#f59e0b" style="border-color:#f59e0b" onclick="toggleLayer('lineC', this)">קו C — מזין M1</button>
+    <button class="map-btn" data-color="#8b5cf6" style="border-color:#8b5cf6" onclick="toggleLayer('lineD', this)">קו D — נתניה דרום</button>
+    <button class="map-btn" data-color="#10b981" style="border-color:#10b981" onclick="toggleLayer('heatmap', this)">מפת חום</button>
+  </div>
+  <div id="map"></div>
+</div>
+
+<!-- Section 3: Demographics -->
+<div class="section" id="sec3">
+  <div class="section-header">
+    <span class="section-number">3</span>
+    <h2>פרופיל נוסעים</h2>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">פרופיל 110,363 נוסעים שנסקרו. 55% עובדים, 31% חסרי רכב. שני שלישים מחזיקים ברכב — הם בוחרים בתח"צ ורגישים לאיכות השירות. פגיעה בשירות תוביל לנטישה.</div>
+    </button>
+  </div>
+  <div class="two-col">
+    <div class="chart-container-sm"><canvas id="ageChart"></canvas></div>
+    <div class="chart-container-sm"><canvas id="employmentChart"></canvas></div>
+    <div class="chart-container-sm"><canvas id="vehiclesChart"></canvas></div>
+    <div class="chart-container-sm"><canvas id="frequencyChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Section 4: Time Distribution -->
+<div class="section" id="sec4">
+  <div class="section-header">
+    <span class="section-number">4</span>
+    <h2>התפלגות שעות — ימי חול</h2>
+    <span class="badge badge-green" style="font-size:0.7rem">data.gov.il</span>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">התפלגות נוסעים לפי שעות ביום (ימי חול) — נתונים חיים מ-data.gov.il. שיא אחה"צ (15:00-19:00) בדרך כלל גדול משיא הבוקר. הגדלת תדירות אחה"צ היא עדיפות מיידית.</div>
+    </button>
+  </div>
+  <div class="chart-container"><canvas id="timeChart"></canvas></div>
+</div>
+
+<!-- Section 5: OD Flows -->
+<div class="section" id="sec5">
+  <div class="section-header">
+    <span class="section-number">5</span>
+    <h2>זרימות מוצא-יעד (OD)</h2>
+    <span class="badge badge-green" style="font-size:0.7rem">data.gov.il</span>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">זרימות מוצא-יעד על בסיס קווים פעילים מ-data.gov.il — ציר שרון↔תל אביב וזוגות פנים-שרוניים. נוסעים/שבוע מחושבים מסך הנוסעים בקווים המחברים בין ערים.</div>
+    </button>
+  </div>
+  <div class="two-col">
+    <div>
+      <h3 style="font-size:0.95rem;margin-bottom:10px;color:var(--text-secondary)">ציר שרון ↔ תל אביב</h3>
+      <div class="chart-container-sm"><canvas id="odAxisChart"></canvas></div>
+    </div>
+    <div>
+      <h3 style="font-size:0.95rem;margin-bottom:10px;color:var(--text-secondary)">זוגות OD מובילים — פנים שרוני</h3>
+      <div style="overflow-y:auto;max-height:260px;">
+        <table id="odInternalTable">
+          <thead><tr><th>מוצא</th><th>יעד</th><th>נוסעים/שב</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 6: Speed & Efficiency -->
+<div class="section" id="sec6">
+  <div class="section-header">
+    <span class="section-number">6</span>
+    <h2>מהירות ויעילות</h2>
+    <span class="badge badge-green" style="font-size:0.7rem">data.gov.il</span>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">מהירות מול יעילות של קווי השרון — נתונים חיים מ-data.gov.il. קווים מתחת ל-18 קמ"ש דורשים התערבות (נתיב עדיפות, תמרור מ"מ). גודל הבועה = כמות נוסעים.</div>
+    </button>
+  </div>
+  <div class="two-col">
+    <div class="chart-container"><canvas id="scatterChart"></canvas></div>
+    <div class="chart-container"><canvas id="speedGapChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Section 7: Rail Competition -->
+<div class="section" id="sec7">
+  <div class="section-header">
+    <span class="section-number">7</span>
+    <h2>תחרות רכבת-אוטובוס</h2>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">9 קווים משכפלים מסלולי רכבת עם פחות מנוסע 1 לק"מ. ביטולם חוסך 1.3-2.6 מלש"ח לשנה להשקעה מחדש בקווים עמוסים.</div>
+    </button>
+  </div>
+  <div style="overflow-x:auto;">
+    <table id="railTable">
+      <thead><tr><th>קו</th><th>נוס/ק"מ</th><th>עולים</th><th>ק"מ</th><th>OD עיקרי</th><th>פעולה</th><th>רמה</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section 8: Service Gaps -->
+<div class="section" id="sec8">
+  <div class="section-header">
+    <span class="section-number">8</span>
+    <h2>פערי שירות — 6 פערים מבניים</h2>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">6 פערים מבניים שזוהו בהשוואת דפוסי ביקוש מהסקר לרשת 2026. הציר הרצליה-רעננה הוא הפער הקריטי ביותר עם 2,095 נסיעות/יום ללא מענה ייעודי.</div>
+    </button>
+  </div>
+  <div class="gap-grid" id="gapGrid"></div>
+</div>
+
+<!-- Section 9: Proposed Lines -->
+<div class="section" id="sec9">
+  <div class="section-header">
+    <span class="section-number">9</span>
+    <h2>קווים חדשים מוצעים</h2>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">'השרון המהיר' לבדו יכול לשרת 2,500-3,500 נוסעים ביום במסדרון הפנימי המבוקש ביותר. 4 קווים חדשים מוצעים לסגירת הפערים.</div>
+    </button>
+  </div>
+  <div class="gap-grid" id="proposedGrid"></div>
+</div>
+
+<!-- Section 10: Trade-off -->
+<div class="section" id="sec10">
+  <div class="section-header">
+    <span class="section-number">10</span>
+    <h2>Trade-Off תקציבי — ביטול מול השקעה</h2>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">כל שקל שמושקע בקו ריק הוא שקל שלא מושקע בתדירות לקו עמוס. הקצאה מחדש של 14,441 ק"מ מ-9 קווים חלשים ל-6 פרויקטים — תשואה של 2.5x.</div>
+    </button>
+  </div>
+  <!-- Summary boxes -->
+  <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;justify-content:center;">
+    <div style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;border-radius:10px;padding:16px 24px;text-align:center;">
+      <div style="font-size:1.6rem;font-weight:700;color:#fca5a5;">14,441</div>
+      <div style="color:var(--text-secondary);font-size:0.8rem;">ק"מ משוחרר</div>
+    </div>
+    <div style="background:rgba(59,130,246,0.1);border:1px solid #3b82f6;border-radius:10px;padding:16px 24px;text-align:center;">
+      <div style="font-size:1.6rem;font-weight:700;color:#93c5fd;">11,800</div>
+      <div style="color:var(--text-secondary);font-size:0.8rem;">ק"מ מושקע</div>
+    </div>
+    <div style="background:rgba(16,185,129,0.1);border:1px solid #10b981;border-radius:10px;padding:16px 24px;text-align:center;">
+      <div style="font-size:1.6rem;font-weight:700;color:#6ee7b7;">+8,000</div>
+      <div style="color:var(--text-secondary);font-size:0.8rem;">נוסעים חדשים/יום</div>
+    </div>
+    <div style="background:rgba(245,158,11,0.1);border:1px solid #f59e0b;border-radius:10px;padding:16px 24px;text-align:center;">
+      <div style="font-size:1.6rem;font-weight:700;color:#fcd34d;">2.5x</div>
+      <div style="color:var(--text-secondary);font-size:0.8rem;">ROI</div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div>
+      <h3 style="color:#fca5a5;font-size:0.95rem;margin-bottom:10px;">ביטול — 9 קווים</h3>
+      <table id="cancelTable">
+        <thead><tr><th>קו</th><th>ק"מ משוחרר</th><th>נוסעים</th><th>חלופה</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div>
+      <h3 style="color:#6ee7b7;font-size:0.95rem;margin-bottom:10px;">השקעה — 6 פרויקטים</h3>
+      <table id="investTable">
+        <thead><tr><th>פרויקט</th><th>ק"מ</th><th>נוסעים צפויים</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Section 11: Implementation Timeline -->
+<div class="section" id="sec11">
+  <div class="section-header">
+    <span class="section-number">11</span>
+    <h2>מפת יישום ולוח זמנים</h2>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">מפת דרכים ל-4 שלבים — מעדיפות תח"צ מיידית ועד שילוב מלא במטרו M1. כל שלב מותנה בהצלחת השלב הקודם.</div>
+    </button>
+  </div>
+  <div class="timeline" id="timeline"></div>
+</div>
+
+<!-- Section 12: KPI Targets -->
+<div class="section" id="sec12">
+  <div class="section-header">
+    <span class="section-number">12</span>
+    <h2>מדדי הצלחה (KPIs)</h2>
+    <span class="badge badge-green" style="font-size:0.7rem">data.gov.il</span>
+    <button class="info-btn" tabindex="0">i
+      <div class="info-tooltip">מדדי הצלחה עם מצב נוכחי חי מ-data.gov.il. מהירות קווים 126/501 ועולים/יום מעודכנים אוטומטית. פס ההתקדמות מציג את המיקום בין ערך הבסיס ליעד 36 חודש.</div>
+    </button>
+  </div>
+  <table id="kpiTable">
+    <thead><tr><th>מדד</th><th>ערך בסיס</th><th>יעד 12 חודש</th><th>יעד 36 חודש</th><th>מצב נוכחי + התקדמות</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+</div><!-- /container -->
+
+<!-- Footer -->
+<div style="text-align:center;padding:30px 20px;color:var(--text-muted);font-size:0.78rem;border-top:1px solid var(--border);margin-top:30px;line-height:1.9;">
+  <div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:12px;font-weight:600;">מקורות נתונים</div>
+  <div>סקר On-Board מטרופולין ת"א (2020-2022) — נתיבי איילון / משרד התחבורה</div>
+  <div>API קווי אוטובוס — <a href="https://data.gov.il/dataset/ridership" target="_blank" style="color:var(--accent-blue)">data.gov.il/dataset/ridership</a> (resource: e6cfac2f)</div>
+  <div>API נוסעים בתחנות — <a href="https://data.gov.il/api/3/action/datastore_search?resource_id=b2c6b258-4638-4f8e-bcad-600f0cdfb449" target="_blank" style="color:var(--accent-blue)">data.gov.il</a> (resource: b2c6b258)</div>
+  <div>API נסיעות מתוכננות — <a href="https://data.gov.il/api/3/action/datastore_search?resource_id=58593e9b-2d71-4c39-8663-b34ab29607ab" target="_blank" style="color:var(--accent-blue)">data.gov.il</a> (resource: 58593e9b)</div>
+  <div>API דיוק רכבת ישראל — <a href="https://data.gov.il/api/3/action/datastore_search?resource_id=1ebbbb91-1d44-4f41-a85c-4a93a35e32d6" target="_blank" style="color:var(--accent-blue)">data.gov.il</a> (resource: 1ebbbb91)</div>
+  <div>מתודולוגיה: <a href="https://humantransit.org" target="_blank" style="color:var(--accent-blue)">Jarrett Walker (Human Transit)</a> | <a href="https://markav.net" target="_blank" style="color:var(--accent-blue)">מר קו (markav.net)</a></div>
+  <div style="margin-top:10px;color:var(--text-muted);">הנתונים מתעדכנים יומית מ-data.gov.il | <a href="https://github.com/zagron-lgtm/sharon-dashboard" target="_blank" style="color:var(--accent-blue)">GitHub</a></div>
+</div>
+
+<!-- Claude Bot is inline in the header area -->
+
+<script>
+// ==================== DATA ====================
+let DATA = {};
+
+// Load data — try embedded first, then external JSON
+if (typeof EMBEDDED_DATA !== 'undefined') {
+  DATA = EMBEDDED_DATA;
+  document.addEventListener('DOMContentLoaded', initDashboard);
+} else {
+  fetch('data.json')
+    .then(r => r.json())
+    .then(d => { DATA = d; initDashboard(); })
+    .catch(e => {
+      document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#ef4444;font-size:1.2rem;">שגיאה בטעינת data.json — הריצו python3 preprocess.py תחילה</div>';
+    });
+}
+
+// ==================== TOOLTIPS ====================
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.info-btn').forEach(btn => {
+    const tip = btn.querySelector('.info-tooltip');
+    if (!tip) return;
+    btn.addEventListener('mouseenter', () => {
+      const rect = btn.getBoundingClientRect();
+      tip.style.display = 'block';
+      tip.style.top = (rect.bottom + 8) + 'px';
+      tip.style.right = Math.max(10, window.innerWidth - rect.right) + 'px';
+      tip.style.left = 'auto';
+      // Keep within viewport
+      const tipRect = tip.getBoundingClientRect();
+      if (tipRect.left < 10) { tip.style.right = 'auto'; tip.style.left = '10px'; }
+      if (tipRect.bottom > window.innerHeight - 10) { tip.style.top = (rect.top - tipRect.height - 8) + 'px'; }
+    });
+    btn.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
+});
+
+// ==================== LIVE CLOCK ====================
+function startClock() {
+  const el = document.getElementById('liveClock');
+  if (!el) return;
+  const hDate = document.getElementById('headerDate');
+  const hClock = document.getElementById('headerClock');
+  const months = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  function tick() {
+    const now = new Date();
+    const p = n => String(n).padStart(2, '0');
+    const timeStr = p(now.getHours()) + ':' + p(now.getMinutes()) + ':' + p(now.getSeconds());
+    if (el) el.textContent = timeStr;
+    if (hClock) hClock.textContent = timeStr;
+    if (hDate) hDate.textContent = `יום ${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+startClock();
+
+// ==================== SHARON FILTER (global) ====================
+const SHARON_FILTER = {
+  cities: ['נתניה','הרצליה','הרצלייה','כפר סבא','רמת השרון','הוד השרון','טירה','טייבה','קלנסווה','קלנסוואה','כוכב יאיר','צור יגאל'],
+  clusters: ['שרון','השרון'],
+  operators: ['מטרופולין'],
+  trainStations: ['נתניה','הרצליה','כפר סבא','רעננה','הוד השרון','סוקולוב'],
+  isMatch(r) {
+    const ag = (r.AgencyName || '');
+    // Must be Metropolin operator
+    if (!this.operators.some(o => ag.includes(o))) return false;
+    // And in a Sharon cluster or serving our cities
+    const cl = (r.ClusterName || '');
+    const orig = (r.OriginCityName || '');
+    const dest = (r.DestinationCityName || '');
+    if (this.clusters.some(c => cl.includes(c))) return true;
+    if (this.cities.some(c => orig.includes(c) || dest.includes(c))) return true;
+    return false;
+  }
+};
+
+// ==================== INIT ====================
+function initDashboard() {
+  renderKPIs();
+  renderTopLines();
+  initMap();
+  loadLiveData();
+  renderDemographics();
+  renderTimeDistribution();
+  renderOD();
+  renderSpeedEfficiency();
+  renderRailCompetition();
+  renderGaps();
+  renderProposedLines();
+  renderTradeoff();
+  renderTimeline();
+  renderKPITargets();
+  initChat();
+  populateCityFilter();
+}
+
+// ==================== KPI CARDS ====================
+function renderKPIs() {
+  const k = DATA.kpi_summary;
+  const cards = [
+    { icon: '🚌', value: k.total_riders.toLocaleString(), label: 'נוסעים מנופח (סה"כ סקר)', color: 'var(--accent-blue)' },
+    { icon: '🛤️', value: k.num_lines, label: 'קווים פעילים', color: 'var(--accent-green)' },
+    { icon: '📏', value: k.total_km.toLocaleString(), label: 'ק"מ (סה"כ סקר)', color: 'var(--accent-purple)' },
+    { icon: '⚡', value: k.avg_speed + ' קמ"ש', label: 'מהירות ממוצעת (משוקלל)', color: 'var(--accent-orange)' },
+    { icon: '🏆', value: '126', label: 'קו מוביל (9,639 עולים)', color: 'var(--accent-red)' },
+    { icon: '🔒', value: k.captive_pct + '%', label: 'נוסעים שבויים (0 רכבים)', color: 'var(--accent-blue)' }
+  ];
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = cards.map(c => `
+    <div class="kpi-card">
+      <div class="kpi-icon">${c.icon}</div>
+      <div class="kpi-value" style="color:${c.color}">${c.value}</div>
+      <div class="kpi-label">${c.label}</div>
+    </div>
+  `).join('');
+}
+
+// ==================== TOP LINES (Live from data.gov.il API) ====================
+let topLinesChart = null;
+
+async function renderTopLines() {
+  const tbody = document.querySelector('#topLinesTable tbody');
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--accent-orange)">טוען נתונים מ-data.gov.il...</td></tr>';
+
+  // Fetch from API — Sharon/Metropolin only
+  const allRecords = [];
+  for (const q of ['שרון', 'מטרופולין שרון', 'השרון']) {
+    try {
+      const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=e6cfac2f-979a-44fd-b439-ecb116ec0b16&limit=200&q=${encodeURIComponent(q)}&sort=WeeklyPassengers+desc`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.result && data.result.records) {
+        allRecords.push(...data.result.records.filter(r => SHARON_FILTER.isMatch(r)));
+      }
+    } catch(e) {}
+  }
+
+  // Deduplicate by RouteName+Direction, keep latest quarter
+  const byKey = {};
+  allRecords.forEach(r => {
+    const key = r.RouteName + '_' + r.RouteDirection;
+    if (!byKey[key] || (r.Q || 0) > (byKey[key].Q || 0)) byKey[key] = r;
+  });
+
+  // Aggregate both directions per line
+  const byLine = {};
+  Object.values(byKey).forEach(r => {
+    const name = String(r.RouteName);
+    if (!byLine[name]) byLine[name] = { line: name, cluster: r.ClusterName || '', agency: r.AgencyName || '', origin: r.OriginCityName || '', dest: r.DestinationCityName || '', weeklyPax: 0, weeklyKm: 0, speedSum: 0, speedCount: 0, dailyPax: 0 };
+    byLine[name].weeklyPax += (r.WeeklyPassengers || 0);
+    byLine[name].weeklyKm += (r.WeeklyKM || 0);
+    byLine[name].dailyPax += (r.DailyPassengers || 0);
+    if (r.AverageSpeed > 0) { byLine[name].speedSum += r.AverageSpeed; byLine[name].speedCount++; }
+  });
+
+  const lines = Object.values(byLine)
+    .map(l => ({ ...l, avgSpeed: l.speedCount > 0 ? (l.speedSum / l.speedCount).toFixed(1) : '—', efficiency: l.weeklyKm > 0 ? (l.weeklyPax / l.weeklyKm * 100).toFixed(1) : '0' }))
+    .filter(l => l.weeklyPax > 0)
+    .sort((a, b) => b.weeklyPax - a.weeklyPax)
+    .slice(0, 15);
+
+  // Chart
+  const ctx = document.getElementById('topLinesChart').getContext('2d');
+  if (topLinesChart) topLinesChart.destroy();
+  topLinesChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: lines.map(l => 'קו ' + l.line),
+      datasets: [{
+        label: 'נוסעים/שבוע',
+        data: lines.map(l => Math.round(l.weeklyPax)),
+        backgroundColor: lines.map(l => l.cluster.includes('השרון') ? '#8b5cf6' : '#3b82f6'),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#e2e8f0', font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Table
+  tbody.innerHTML = lines.map((l, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${l.line}</strong></td>
+      <td>${Math.round(l.weeklyPax).toLocaleString()}</td>
+      <td>${Math.round(l.weeklyKm).toLocaleString()}</td>
+      <td>${l.avgSpeed}</td>
+      <td><span class="badge ${parseFloat(l.efficiency) > 4 ? 'badge-green' : parseFloat(l.efficiency) > 2 ? 'badge-orange' : 'badge-red'}">${l.efficiency}</span></td>
+      <td style="font-size:0.75rem">${l.cluster}</td>
+    </tr>
+  `).join('');
+}
+
+// ==================== MAP ====================
+let map, layers = {};
+
+function initMap() {
+  map = L.map('map').setView([32.15, 34.83], 11);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CartoDB',
+    maxZoom: 18
+  }).addTo(map);
+
+  // Station layer
+  const stationGroup = L.layerGroup();
+  DATA.station_geo.features.forEach(f => {
+    const b = f.properties.boardings;
+    const r = Math.max(3, Math.min(20, Math.sqrt(b) * 0.8));
+    const color = b > 1000 ? '#ef4444' : b > 500 ? '#f59e0b' : b > 100 ? '#3b82f6' : '#64748b';
+    L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], {
+      radius: r, fillColor: color, fillOpacity: 0.7, color: color, weight: 1, opacity: 0.9
+    }).bindPopup(`<strong>${f.properties.name}</strong><br>עולים: ${f.properties.boardings.toLocaleString()}<br>יורדים: ${f.properties.alightings.toLocaleString()}`
+    ).addTo(stationGroup);
+  });
+  layers.stations = stationGroup;
+  stationGroup.addTo(map);
+
+  // Boundaries layer
+  const boundaryGroup = L.layerGroup();
+  if (DATA.boundaries_geo.features.length > 0) {
+    L.geoJSON(DATA.boundaries_geo, {
+      style: { color: '#3b82f6', weight: 1.5, fillColor: '#3b82f6', fillOpacity: 0.08 },
+      onEachFeature: (f, layer) => { layer.bindPopup(`<strong>${f.properties.SHEM_YISHU}</strong>`); }
+    }).addTo(boundaryGroup);
+  }
+  layers.boundaries = boundaryGroup;
+
+  // OD Flow layer
+  const odGroup = L.layerGroup();
+  const cityCenters = {
+    'נתניה': [32.33, 34.86], 'הרצליה': [32.16, 34.79], 'רמת השרון': [32.15, 34.84],
+    'רעננה': [32.19, 34.87], 'כפר סבא': [32.18, 34.91], 'הוד השרון': [32.15, 34.89],
+    'תל אביב -יפו': [32.07, 34.78]
+  };
+  DATA.od_matrix.sharon_ta_axis.forEach(d => {
+    const from = cityCenters[d.city];
+    const to = cityCenters['תל אביב -יפו'];
+    if (from && to) {
+      L.polyline([from, to], {
+        color: '#f59e0b', weight: Math.max(2, d.total / 1500), opacity: 0.6
+      }).bindPopup(`${d.city} ↔ ת"א: ${d.total.toLocaleString()} נסיעות`).addTo(odGroup);
+    }
+  });
+  // Internal
+  DATA.od_matrix.internal_sharon.forEach(d => {
+    const from = cityCenters[d.origin];
+    const to = cityCenters[d.destination];
+    if (from && to) {
+      L.polyline([from, to], {
+        color: '#8b5cf6', weight: Math.max(1.5, d.trips / 500), opacity: 0.5, dashArray: '6 4'
+      }).bindPopup(`${d.origin} → ${d.destination}: ${d.trips.toLocaleString()}`).addTo(odGroup);
+    }
+  });
+  layers.odFlows = odGroup;
+
+  // Top stations layer (labeled)
+  const topStationsGroup = L.layerGroup();
+  DATA.top_stations.slice(0, 15).forEach(s => {
+    if (s.lat && s.lon) {
+      const marker = L.circleMarker([s.lat, s.lon], {
+        radius: Math.max(8, Math.min(22, Math.sqrt(s.boardings) * 0.9)),
+        fillColor: '#f59e0b', fillOpacity: 0.85, color: '#fff', weight: 2, opacity: 1
+      }).bindPopup(`<strong>${s.name}</strong><br>עולים: ${s.boardings.toLocaleString()}<br>יורדים: ${s.alightings.toLocaleString()}`);
+      marker.addTo(topStationsGroup);
+      // Label
+      L.marker([s.lat, s.lon], {
+        icon: L.divIcon({ className: 'station-label', html: `<span>${s.name.split('/')[0].substring(0,18)}</span>`, iconSize: [120, 20], iconAnchor: [60, -8] })
+      }).addTo(topStationsGroup);
+    }
+  });
+  layers.topStations = topStationsGroup;
+
+  // Internal OD flows layer
+  const odInternalGroup = L.layerGroup();
+  DATA.od_matrix.internal_sharon.forEach(d => {
+    const from = cityCenters[d.origin];
+    const to = cityCenters[d.destination];
+    if (from && to) {
+      L.polyline([from, to], {
+        color: '#8b5cf6', weight: Math.max(2, d.trips / 400), opacity: 0.7, dashArray: '8 5'
+      }).bindPopup(`${d.origin} → ${d.destination}: ${d.trips.toLocaleString()}`).addTo(odInternalGroup);
+    }
+  });
+  layers.odInternal = odInternalGroup;
+
+  // Individual proposed line layers
+  DATA.proposed_lines.forEach(pl => {
+    const group = L.layerGroup();
+    const latlngs = pl.coords.map(c => [c[1], c[0]]);
+    L.polyline(latlngs, {
+      color: pl.color, weight: 5, opacity: 0.85, dashArray: '12 6'
+    }).bindPopup(`<strong>קו ${pl.id}: ${pl.name}</strong><br>${pl.route}<br>ביקוש: ${pl.estimated_riders} נוסעים/יום`).addTo(group);
+    // Endpoint markers
+    [latlngs[0], latlngs[latlngs.length - 1]].forEach(ll => {
+      L.circleMarker(ll, { radius: 6, fillColor: pl.color, fillOpacity: 1, color: '#fff', weight: 2 }).addTo(group);
+    });
+    layers['line' + pl.id] = group;
+  });
+
+  // Heatmap layer (simple: many small transparent circles)
+  const heatGroup = L.layerGroup();
+  DATA.station_geo.features.forEach(f => {
+    const b = f.properties.boardings;
+    if (b > 5) {
+      L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], {
+        radius: Math.max(6, Math.sqrt(b) * 1.5),
+        fillColor: b > 500 ? '#ef4444' : b > 100 ? '#f59e0b' : '#10b981',
+        fillOpacity: 0.18,
+        stroke: false
+      }).addTo(heatGroup);
+    }
+  });
+  layers.heatmap = heatGroup;
+}
+
+function toggleLayer(name, btn) {
+  const color = btn.getAttribute('data-color') || '#3b82f6';
+  if (btn.classList.contains('active')) {
+    btn.classList.remove('active');
+    btn.style.background = 'var(--bg-primary)';
+    btn.style.color = 'var(--text-secondary)';
+    if (layers[name]) map.removeLayer(layers[name]);
+  } else {
+    btn.classList.add('active');
+    btn.style.background = color + '40';
+    btn.style.color = '#fff';
+    if (layers[name]) layers[name].addTo(map);
+  }
+}
+
+// ==================== DEMOGRAPHICS ====================
+function renderDemographics() {
+  const colors = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#ec4899','#06b6d4','#84cc16'];
+
+  function doughnut(canvasId, data, title) {
+    new Chart(document.getElementById(canvasId).getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: data.map(d => d.label),
+        datasets: [{ data: data.map(d => d.percent), backgroundColor: colors.slice(0, data.length), borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'left', labels: { color: '#e2e8f0', font: { size: 11 }, boxWidth: 12, padding: 6 } },
+          title: { display: true, text: title, color: '#94a3b8', font: { size: 13 } }
+        },
+        cutout: '55%'
+      }
+    });
+  }
+
+  doughnut('ageChart', DATA.demographics.age.slice(0, 6), 'התפלגות גיל');
+  doughnut('employmentChart', DATA.demographics.employment.slice(0, 6), 'מצב תעסוקה');
+  doughnut('vehiclesChart', DATA.demographics.vehicles.slice(0, 5), 'בעלות על רכב');
+  doughnut('frequencyChart', DATA.demographics.trip_frequency.slice(0, 5), 'תדירות נסיעה');
+}
+
+// ==================== TIME DISTRIBUTION (Live from API) ====================
+let timeChart = null;
+
+async function renderTimeDistribution() {
+  const TIME_FIELDS = [
+    { key: 'WorkDay - 04:00-05:59', label: '04:00-06:00' },
+    { key: 'WorkDay - 06:00-08:59', label: '06:00-09:00' },
+    { key: 'WorkDay - 09:00-11:59', label: '09:00-12:00' },
+    { key: 'WorkDay - 12:00-14:59', label: '12:00-15:00' },
+    { key: 'WorkDay - 15:00-18:59', label: '15:00-19:00' },
+    { key: 'WorkDay - 19:00-23:59', label: '19:00-00:00' }
+  ];
+
+  // Fetch Sharon/Metropolin routes
+  const clusterData = {};
+  for (const q of ['שרון', 'מטרופולין שרון', 'השרון']) {
+    try {
+      const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=e6cfac2f-979a-44fd-b439-ecb116ec0b16&limit=200&q=${encodeURIComponent(q)}&sort=WeeklyPassengers+desc`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.result && data.result.records) {
+        data.result.records.filter(r => SHARON_FILTER.isMatch(r)).forEach(r => {
+          const cl = r.ClusterName || '';
+          if (!clusterData[cl]) clusterData[cl] = {};
+          TIME_FIELDS.forEach(tf => {
+            if (!clusterData[cl][tf.key]) clusterData[cl][tf.key] = 0;
+            clusterData[cl][tf.key] += (r[tf.key] || 0);
+          });
+        });
+      }
+    } catch(e) {}
+  }
+
+  // Build datasets per cluster
+  const clusterColors = { 'שרון': '#3b82f6', 'השרון': '#8b5cf6' };
+  const datasets = [];
+  for (const [cl, totals] of Object.entries(clusterData)) {
+    const sum = TIME_FIELDS.reduce((s, tf) => s + (totals[tf.key] || 0), 0);
+    if (sum === 0) continue;
+    datasets.push({
+      label: cl,
+      data: TIME_FIELDS.map(tf => parseFloat(((totals[tf.key] || 0) / sum * 100).toFixed(1))),
+      backgroundColor: clusterColors[cl] || '#64748b',
+      borderRadius: 4
+    });
+  }
+
+  if (datasets.length === 0) return; // fallback: keep empty
+
+  const ctx = document.getElementById('timeChart').getContext('2d');
+  if (timeChart) timeChart.destroy();
+  timeChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: TIME_FIELDS.map(tf => tf.label), datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#e2e8f0' } },
+        title: { display: true, text: 'אחוז נוסעים לפי תקופת יום (data.gov.il)', color: '#94a3b8' }
+      },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { color: '#94a3b8', callback: v => v + '%' }, grid: { color: '#1e293b' } }
+      }
+    }
+  });
+}
+
+// ==================== OD (Live from API) ====================
+let odAxisChart = null;
+
+async function renderOD() {
+  const SHARON_CITIES_OD = ['נתניה','הרצליה','כפר סבא','רמת השרון','הוד השרון','טירה','טייבה','קלנסווה','כוכב יאיר'];
+  const TA = 'תל אביב';
+  const tbody = document.querySelector('#odInternalTable tbody');
+  tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--accent-orange)">טוען...</td></tr>';
+
+  // Fetch Sharon/Metropolin routes
+  const allRecs = [];
+  for (const q of ['שרון', 'מטרופולין שרון', 'השרון']) {
+    try {
+      const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=e6cfac2f-979a-44fd-b439-ecb116ec0b16&limit=300&q=${encodeURIComponent(q)}&sort=WeeklyPassengers+desc`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.result && data.result.records) allRecs.push(...data.result.records.filter(r => SHARON_FILTER.isMatch(r)));
+    } catch(e) {}
+  }
+
+  // Build OD: Sharon city ↔ TA
+  const axisData = {};
+  SHARON_CITIES_OD.forEach(c => { axisData[c] = { to_ta: 0, from_ta: 0 }; });
+  // Build internal OD pairs
+  const internalPairs = {};
+
+  allRecs.forEach(r => {
+    const orig = r.OriginCityName || '';
+    const dest = r.DestinationCityName || '';
+    const pax = r.WeeklyPassengers || 0;
+    // Sharon → TA
+    const origCity = SHARON_CITIES_OD.find(c => orig.includes(c));
+    const destCity = SHARON_CITIES_OD.find(c => dest.includes(c));
+    if (origCity && dest.includes(TA)) axisData[origCity].to_ta += pax;
+    if (destCity && orig.includes(TA)) axisData[destCity].from_ta += pax;
+    // Internal Sharon
+    if (origCity && destCity && origCity !== destCity) {
+      const key = [origCity, destCity].sort().join('↔');
+      if (!internalPairs[key]) internalPairs[key] = { origin: origCity, destination: destCity, pax: 0 };
+      internalPairs[key].pax += pax;
+    }
+  });
+
+  // Sharon-TA axis chart
+  const axis = SHARON_CITIES_OD.map(c => ({ city: c, to_ta: Math.round(axisData[c].to_ta), from_ta: Math.round(axisData[c].from_ta) }))
+    .sort((a, b) => (b.to_ta + b.from_ta) - (a.to_ta + a.from_ta));
+
+  const ctx = document.getElementById('odAxisChart').getContext('2d');
+  if (odAxisChart) odAxisChart.destroy();
+  odAxisChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: axis.map(d => d.city),
+      datasets: [
+        { label: 'לתל אביב', data: axis.map(d => d.to_ta), backgroundColor: '#3b82f6', borderRadius: 4 },
+        { label: 'מתל אביב', data: axis.map(d => d.from_ta), backgroundColor: '#8b5cf6', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#e2e8f0', font: { size: 11 } } } },
+      scales: {
+        x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { display: false } },
+        y: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+      }
+    }
+  });
+
+  // Internal table
+  const internal = Object.values(internalPairs).sort((a, b) => b.pax - a.pax).slice(0, 10);
+  tbody.innerHTML = internal.map(d => `
+    <tr><td>${d.origin}</td><td>${d.destination}</td><td><strong>${Math.round(d.pax).toLocaleString()}</strong></td></tr>
+  `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">אין נתונים</td></tr>';
+}
+
+// ==================== SPEED & EFFICIENCY (Live from API) ====================
+let scatterChart = null, speedGapChart = null;
+
+async function renderSpeedEfficiency() {
+  // Fetch Sharon/Metropolin routes
+  const allRecs = [];
+  for (const q of ['שרון', 'מטרופולין שרון', 'השרון']) {
+    try {
+      const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=e6cfac2f-979a-44fd-b439-ecb116ec0b16&limit=200&q=${encodeURIComponent(q)}&sort=WeeklyPassengers+desc`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.result && data.result.records) allRecs.push(...data.result.records.filter(r => SHARON_FILTER.isMatch(r)));
+    } catch(e) {}
+  }
+
+  // Aggregate by line (latest Q, both directions)
+  const byLine = {};
+  allRecs.forEach(r => {
+    const name = String(r.RouteName);
+    if (!byLine[name] || (r.Q||0) > (byLine[name].q||0)) {
+      byLine[name] = { line: name, cluster: r.ClusterName||'', pax: 0, km: 0, speedSum: 0, speedN: 0, q: r.Q||0 };
+    }
+  });
+  allRecs.forEach(r => {
+    const name = String(r.RouteName);
+    if (byLine[name] && (r.Q||0) === byLine[name].q) {
+      byLine[name].pax += (r.WeeklyPassengers||0);
+      byLine[name].km += (r.WeeklyKM||0);
+      if (r.AverageSpeed > 0) { byLine[name].speedSum += r.AverageSpeed; byLine[name].speedN++; }
+    }
+  });
+
+  const lines = Object.values(byLine)
+    .map(l => ({ ...l, speed: l.speedN > 0 ? l.speedSum / l.speedN : 0, eff: l.km > 0 ? (l.pax / l.km) : 0 }))
+    .filter(l => l.pax > 50 && l.speed > 0);
+
+  // Scatter: speed vs efficiency
+  const ctx1 = document.getElementById('scatterChart').getContext('2d');
+  if (scatterChart) scatterChart.destroy();
+  scatterChart = new Chart(ctx1, {
+    type: 'bubble',
+    data: {
+      datasets: [{
+        label: 'קווים',
+        data: lines.map(l => ({ x: parseFloat(l.eff.toFixed(2)), y: parseFloat(l.speed.toFixed(1)), r: Math.max(4, Math.min(20, Math.sqrt(l.pax) * 0.12)), line: l.line })),
+        backgroundColor: lines.map(l => (l.cluster||'').includes('השרון') ? 'rgba(139,92,246,0.6)' : 'rgba(59,130,246,0.6)'),
+        borderColor: lines.map(l => (l.cluster||'').includes('השרון') ? '#8b5cf6' : '#3b82f6'),
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: 'מהירות מול יעילות (גודל = נוסעים) — data.gov.il', color: '#94a3b8' },
+        tooltip: { callbacks: { label: ctx => `קו ${ctx.raw.line}: ${ctx.raw.y} קמ"ש, ${ctx.raw.x} נוס/ק"מ` } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'יעילות (נוסעים/ק"מ)', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+        y: { title: { display: true, text: 'מהירות (קמ"ש)', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+      }
+    }
+  });
+
+  // Speed gap: lines below 18 km/h
+  const slow = lines.filter(l => l.speed < 18 && l.pax > 200).sort((a, b) => a.speed - b.speed).slice(0, 8);
+  const ctx2 = document.getElementById('speedGapChart').getContext('2d');
+  if (speedGapChart) speedGapChart.destroy();
+  speedGapChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: slow.map(s => 'קו ' + s.line),
+      datasets: [
+        { label: 'מהירות בפועל', data: slow.map(s => parseFloat(s.speed.toFixed(1))), backgroundColor: '#ef4444', borderRadius: 4 },
+        { label: 'תקן (18 קמ"ש)', data: slow.map(() => 18), backgroundColor: 'rgba(16,185,129,0.3)', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#e2e8f0' } },
+        title: { display: true, text: 'קווים מתחת לתקן מהירות (18 קמ"ש) — data.gov.il', color: '#94a3b8' }
+      },
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' }, suggestedMax: 22 }
+      }
+    }
+  });
+}
+
+// ==================== RAIL COMPETITION ====================
+function renderRailCompetition() {
+  const levelBadge = { extreme: 'badge-red', high: 'badge-orange', medium: 'badge-blue', low: 'badge-green', complement: 'badge-purple' };
+  const levelLabel = { extreme: 'קיצוני', high: 'גבוה', medium: 'בינוני', low: 'נמוך', complement: 'משלים' };
+  const tbody = document.querySelector('#railTable tbody');
+  tbody.innerHTML = DATA.rail_competition.map(r => `
+    <tr>
+      <td><strong>${r.line}</strong></td>
+      <td><span class="badge ${r.riders_per_km < 1 ? 'badge-red' : 'badge-green'}">${r.riders_per_km}</span></td>
+      <td>${r.riders.toLocaleString()}</td>
+      <td>${r.km.toLocaleString()}</td>
+      <td style="font-size:0.8rem">${r.od}</td>
+      <td><span class="badge ${levelBadge[r.level]}">${r.action}</span></td>
+      <td><span class="badge ${levelBadge[r.level]}">${levelLabel[r.level]}</span></td>
+    </tr>
+  `).join('');
+}
+
+// ==================== SERVICE GAPS ====================
+function renderGaps() {
+  const grid = document.getElementById('gapGrid');
+  grid.innerHTML = DATA.gaps.map(g => `
+    <div class="gap-card" style="border-right-color:${g.priority_color}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3>${g.title}</h3>
+        <span class="badge" style="background:${g.priority_color}33;color:${g.priority_color}">${g.priority}</span>
+      </div>
+      <div class="gap-detail"><strong>ביקוש:</strong> ${g.demand}</div>
+      <div class="gap-detail"><strong>מצב נוכחי:</strong> ${g.status}</div>
+      <div class="gap-detail"><strong>המלצה:</strong> ${g.recommendation}</div>
+    </div>
+  `).join('');
+}
+
+// ==================== PROPOSED LINES ====================
+function renderProposedLines() {
+  const grid = document.getElementById('proposedGrid');
+  grid.innerHTML = DATA.proposed_lines.map(p => `
+    <div class="line-card" style="border-top-color:${p.color}">
+      <h3 style="color:${p.color}">קו ${p.id}: ${p.name}</h3>
+      <div class="line-detail"><strong>מסלול:</strong> ${p.route}</div>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">
+        <span class="line-stat"><span class="badge badge-blue">${p.length_km} ק"מ</span></span>
+        <span class="line-stat"><span class="badge badge-green">${p.travel_time}</span></span>
+        <span class="line-stat"><span class="badge badge-orange">${p.frequency}</span></span>
+        <span class="line-stat"><span class="badge badge-purple">${p.estimated_riders} נוסעים/יום</span></span>
+      </div>
+      <div class="line-detail" style="margin-top:6px"><strong>עלות שנתית:</strong> ${p.annual_cost}</div>
+      <div class="line-detail"><strong>הצדקה:</strong> ${p.justification}</div>
+    </div>
+  `).join('');
+}
+
+// ==================== TRADE-OFF ====================
+function renderTradeoff() {
+  const cancelTbody = document.querySelector('#cancelTable tbody');
+  cancelTbody.innerHTML = DATA.tradeoff.cancel.map(c => `
+    <tr>
+      <td><strong>${c.line}</strong></td>
+      <td>${c.km_freed.toLocaleString()}</td>
+      <td>${c.riders_affected.toLocaleString()}</td>
+      <td style="font-size:0.8rem">${c.alternative}</td>
+    </tr>
+  `).join('');
+
+  const investTbody = document.querySelector('#investTable tbody');
+  investTbody.innerHTML = DATA.tradeoff.invest.map(inv => `
+    <tr>
+      <td style="font-size:0.8rem">${inv.project}</td>
+      <td>${inv.km_allocated.toLocaleString()}</td>
+      <td><span class="badge badge-green">${inv.expected_riders}</span></td>
+    </tr>
+  `).join('');
+}
+
+// ==================== TIMELINE ====================
+function renderTimeline() {
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = DATA.implementation.phases.map(p => `
+    <div class="timeline-phase" style="background:${p.color}15;border:1px solid ${p.color}40;margin:0 4px;border-radius:10px;">
+      <div class="badge" style="background:${p.color};color:white;margin-bottom:8px">${p.label}</div>
+      <h4 style="font-size:0.9rem">${p.timeframe}</h4>
+      <ul>${p.actions.map(a => '<li>• ' + a + '</li>').join('')}</ul>
+      <div class="phase-cost" style="color:${p.color}">${p.cost}</div>
+    </div>
+  `).join('');
+}
+
+// ==================== KPI TARGETS (Live from API) ====================
+async function renderKPITargets() {
+  const tbody = document.querySelector('#kpiTable tbody');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--accent-orange)">טוען נתוני מהירות חיים...</td></tr>';
+
+  // Fetch live speed for lines 126 and 501
+  let speed126 = null, speed501 = null, totalDailyPax = null;
+  try {
+    for (const line of ['126', '501']) {
+      const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=e6cfac2f-979a-44fd-b439-ecb116ec0b16&limit=10&filters=${encodeURIComponent(JSON.stringify({RouteName: line}))}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.result && data.result.records) {
+        const recs = data.result.records.filter(r => SHARON_FILTER.isMatch(r));
+        if (recs.length > 0) {
+          const avgSpd = recs.reduce((s, r) => s + (r.AverageSpeed || 0), 0) / recs.length;
+          if (line === '126') speed126 = avgSpd.toFixed(1);
+          if (line === '501') speed501 = avgSpd.toFixed(1);
+        }
+      }
+    }
+    // Fetch total daily passengers for Sharon
+    const url2 = `https://data.gov.il/api/3/action/datastore_search?resource_id=e6cfac2f-979a-44fd-b439-ecb116ec0b16&limit=300&q=${encodeURIComponent('שרון')}&sort=WeeklyPassengers+desc`;
+    const resp2 = await fetch(url2);
+    const data2 = await resp2.json();
+    if (data2.result && data2.result.records) {
+      totalDailyPax = Math.round(data2.result.records
+        .filter(r => SHARON_FILTER.isMatch(r))
+        .reduce((s, r) => s + (r.DailyPassengers || 0), 0));
+    }
+  } catch(e) {}
+
+  const progressColors = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#06b6d4'];
+
+  const kpis = [
+    { metric: 'מהירות קו 126', baseline: '14.1 קמ"ש', target_12m: '17 קמ"ש', target_36m: '20 קמ"ש',
+      current: speed126 ? speed126 + ' קמ"ש' : '—', pct: speed126 ? Math.min(100, Math.round((parseFloat(speed126) - 14.1) / (20 - 14.1) * 100)) : 0 },
+    { metric: 'מהירות קו 501', baseline: '18.5 קמ"ש', target_12m: '20 קמ"ש', target_36m: '22 קמ"ש',
+      current: speed501 ? speed501 + ' קמ"ש' : '—', pct: speed501 ? Math.min(100, Math.round((parseFloat(speed501) - 18.5) / (22 - 18.5) * 100)) : 0 },
+    { metric: 'עולים/יום (שרון)', baseline: '~80,000', target_12m: '90,000', target_36m: '110,000',
+      current: totalDailyPax ? totalDailyPax.toLocaleString() : '—', pct: totalDailyPax ? Math.min(100, Math.round((totalDailyPax - 80000) / (110000 - 80000) * 100)) : 0 },
+    { metric: 'כיסוי PM Peak', baseline: '—', target_12m: '85%', target_36m: '95%', current: '—', pct: 0 },
+    { metric: 'תדירות הרצליה-רעננה', baseline: '15-20 דקות', target_12m: '12 דקות', target_36m: '8 דקות', current: '—', pct: 0 },
+    { metric: 'כיסוי ישובים ערביים', baseline: 'נמוך', target_12m: 'ניסיוני', target_36m: 'מלא', current: '—', pct: 0 }
+  ];
+
+  tbody.innerHTML = kpis.map((k, i) => `
+    <tr>
+      <td><strong>${k.metric}</strong></td>
+      <td>${k.baseline}</td>
+      <td>${k.target_12m}</td>
+      <td>${k.target_36m}</td>
+      <td style="min-width:150px">
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${k.current !== '—' ? `<span class="badge badge-green" style="font-size:0.72rem;white-space:nowrap">${k.current}</span>` : ''}
+          <div class="progress-bar" style="flex:1">
+            <div class="progress-fill" style="width:${Math.max(5, k.pct)}%;background:${progressColors[i % progressColors.length]}"></div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ==================== CLAUDE BOT ====================
+const STOP_WORDS = new Set(['מה','מהו','מהי','מהם','מהן','איך','למה','האם','של','את','על','עם','הוא','היא','הם','הן','זה','זו','יש','אין','כמה','לגבי','בנושא','לי','אני','שאלה','ה','ב','ל','מ','ו','כ','ש']);
+
+// Category-based follow-up map
+const FOLLOWUPS = {
+  ridership: ['מהי התחנה העמוסה ביותר?', 'מה עם יעילות הקווים?', 'כמה קווים פעילים בשרון?'],
+  stations: ['איך הנוסעים מגיעים לתחנה?', 'מהן הזרימות הגדולות ביותר?', 'מה הפער הכי חשוב?'],
+  demographics: ['כמה נוסעים בעלי רכב?', 'מה תדירות הנסיעות?', 'מי הנוסע הטיפוסי?'],
+  od: ['מה הפער הכי חשוב?', 'אילו קווים חדשים מוצעים?', 'מה עם חיבורי רכבת?'],
+  speed: ['מה לגבי קו 126?', 'מה ההמלצות המיידיות?', 'מה ROI של השינויים?'],
+  gaps: ['אילו קווים חדשים מוצעים?', 'מה התקציב הנדרש?', 'מה עם ישובים ערביים?'],
+  rail: ['מה קורה עם קו 617?', 'מה קו 605?', 'מה ROI של השינויים?'],
+  recommendations: ['מתי ייפתח המטרו?', 'מה עם דיור חדש?', 'מה התקציב הנדרש?'],
+  general: ['מתי נעשה הסקר?', 'כמה אוכלוסייה בשרון?', 'מה המתודולוגיה?'],
+  time: ['מה ההמלצות המיידיות?', 'מה לגבי שעות הערב?', 'מהו הקו העמוס ביותר?']
+};
+
+function lookupLine(lineNum, fullQuery) {
+  if (!DATA.all_lines) return null;
+  const info = DATA.all_lines[lineNum];
+  if (info) {
+    // Extract cities from route description
+    const routeCities = (info.route || '').match(/([א-ת"]+(?:\s[א-ת"]+)*)/g) || [];
+    return {
+      a: `קו ${info.line} (נתוני סקר 2020-2022): ${info.riders.toLocaleString()} עולים מנופח, ${info.km.toLocaleString()} ק"מ, מהירות ${info.avg_speed} קמ"ש, יעילות ${info.efficiency} נוסעים/ק"מ.${info.route ? '\nמסלול: ' + info.route : ''}`,
+      cat: 'ridership',
+      _origin: routeCities[0] || '',
+      _dest: routeCities[routeCities.length - 1] || ''
+    };
+  }
+  // Not in survey — return null, will trigger async API lookup
+  return null;
+}
+
+// Live API lookup for lines not in survey data
+async function lookupLineAPI(lineNum, cityHint) {
+  const clusters = ['השרון', 'שרון חולון מרחבי'];
+  let records = [];
+
+  // Query: free-text search "lineNum cityHint" — most reliable way to find routes
+  try {
+    const qText = cityHint ? `${lineNum} ${cityHint}` : `${lineNum} שרון`;
+    const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=e6cfac2f-979a-44fd-b439-ecb116ec0b16&limit=30&q=${encodeURIComponent(qText)}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (data.result && data.result.records) {
+      records = data.result.records.filter(r => String(r.RouteName) === String(lineNum) && SHARON_FILTER.isMatch(r));
+    }
+  } catch(e) {}
+
+  // Fallback: try without city hint
+  if (records.length === 0) {
+    try {
+      const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=e6cfac2f-979a-44fd-b439-ecb116ec0b16&limit=50&filters=${encodeURIComponent(JSON.stringify({RouteName: String(lineNum)}))}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.result && data.result.records) {
+        records = data.result.records.filter(r => SHARON_FILTER.isMatch(r));
+      }
+    } catch(e) {}
+  }
+
+  if (records.length === 0) return null;
+
+  // Get latest quarter, aggregate directions
+  records.sort((a,b) => ((b.Q||0) - (a.Q||0)) || ((b.year||0) - (a.year||0)));
+  const latest = records[0];
+  const sameQ = records.filter(r => r.Q === latest.Q && r.year === latest.year);
+  const totalPax = sameQ.reduce((s,r) => s + (r.WeeklyPassengers||0), 0);
+  const totalKm = sameQ.reduce((s,r) => s + (r.WeeklyKM||0), 0);
+  const avgSpeed = sameQ.filter(r=>r.AverageSpeed>0).reduce((s,r,_,a) => s + r.AverageSpeed/a.length, 0);
+  const dailyPax = sameQ.reduce((s,r) => s + (r.DailyPassengers||0), 0);
+  const costPerPax = latest.OperatingCostPerPassenger || 0;
+
+  return {
+    line: lineNum,
+    origin: latest.OriginCityName || '',
+    dest: latest.DestinationCityName || '',
+    agency: latest.AgencyName || '',
+    cluster: latest.ClusterName || '',
+    weeklyPax: Math.round(totalPax),
+    dailyPax: Math.round(dailyPax),
+    weeklyKm: Math.round(totalKm),
+    avgSpeed: avgSpeed.toFixed(1),
+    costPerPax: costPerPax.toFixed(1),
+    routeLength: latest.RouteLength || 0,
+    stations: latest.StationsInRoute || 0,
+    peakTime: latest.MaxRidership || '',
+    year: latest.year,
+    quarter: latest.Q,
+    type: latest.RouteType || '',
+    directions: sameQ.length
+  };
+}
+
+// Async station lookup from API
+async function lookupStationAPI(stationName) {
+  try {
+    const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=b2c6b258-4638-4f8e-bcad-600f0cdfb449&limit=30&q=${encodeURIComponent(stationName)}&filters=${encodeURIComponent(JSON.stringify({year_key: 2025}))}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (!data.result || !data.result.records || data.result.records.length === 0) return null;
+    const recs = data.result.records;
+    let totalPax = 0, periods = new Set();
+    recs.forEach(r => {
+      periods.add(r.LowOrPeakDescFull);
+      for (let d = 1; d <= 31; d++) {
+        const v = r['day_' + d];
+        if (v != null && !isNaN(v)) totalPax += Number(v);
+      }
+    });
+    return {
+      name: recs[0].StationName,
+      totalPax: Math.round(totalPax),
+      periods: periods.size,
+      months: [...new Set(recs.map(r => r.month_key))].length
+    };
+  } catch(e) { return null; }
+}
+
+function searchQA(query) {
+  const tokens = query.split(/[\s,?!.]+/).filter(t => t.length > 1 && !STOP_WORDS.has(t));
+  if (tokens.length === 0) return null;
+
+  const scored = [];
+  DATA.qa_knowledge.forEach(qa => {
+    let score = 0;
+    tokens.forEach(t => {
+      // Exact keyword match = highest
+      qa.keywords.forEach(kw => {
+        if (kw === t) score += 5;
+        else if (kw.includes(t) && t.length >= 3) score += 2;
+        else if (t.includes(kw) && kw.length >= 3) score += 2;
+      });
+      // Question text match
+      if (qa.q.includes(t) && t.length >= 2) score += 2;
+    });
+    // Bonus: if ALL non-stop tokens appear in keywords or question
+    const allMatch = tokens.every(t => qa.keywords.some(kw => kw.includes(t) || t.includes(kw)) || qa.q.includes(t));
+    if (allMatch && tokens.length >= 2) score += 5;
+    if (score > 0) scored.push({ qa, score });
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.length > 0 && scored[0].score >= 3 ? scored[0].qa : null;
+}
+
+async function claudeAsk(text) {
+  const input = document.getElementById('claudeInput');
+  const q = (text || input.value).trim();
+  if (!q) return;
+  input.value = '';
+
+  const area = document.getElementById('claudeAnswerArea');
+  const echo = document.getElementById('claudeQuestionEcho');
+  const ansText = document.getElementById('claudeAnswerText');
+  const followups = document.getElementById('claudeFollowups');
+
+  echo.textContent = q;
+  area.style.display = 'block';
+  area.style.animation = 'none';
+  area.offsetHeight;
+  area.style.animation = 'fadeSlide 0.3s ease';
+
+  // Extract city hint from question
+  const cityNames = ['נתניה','הרצליה','רעננה','כפר סבא','רמת השרון','הוד השרון','חולון','בת ים','כפר יונה','פתח תקווה','תל אביב'];
+  const cityHint = cityNames.find(c => q.includes(c)) || '';
+
+  // Try dynamic line lookup (e.g. "קו 14", "קו 501")
+  const lineMatch = q.match(/קו\s*(\d+)/);
+  let result = null;
+
+  if (lineMatch) {
+    // First: check survey data
+    result = lookupLine(lineMatch[1], q);
+
+    if (!result) {
+      // Not in survey — query live API
+      ansText.innerHTML = '<span style="color:var(--accent-orange)">מחפש ב-API של data.gov.il...</span>';
+      followups.innerHTML = '';
+      const apiData = await lookupLineAPI(lineMatch[1], cityHint);
+      if (apiData) {
+        result = {
+          a: `קו ${apiData.line} (נתוני API — רבעון ${apiData.quarter}/${apiData.year}):\n` +
+             `מפעיל: ${apiData.agency} | אשכול: ${apiData.cluster}\n` +
+             `מסלול: ${apiData.origin} → ${apiData.dest} (${apiData.routeLength} ק"מ, ${apiData.stations} תחנות)\n` +
+             `נוסעים: ${apiData.dailyPax.toLocaleString()}/יום, ${apiData.weeklyPax.toLocaleString()}/שבוע\n` +
+             `ק"מ/שבוע: ${apiData.weeklyKm.toLocaleString()} | מהירות: ${apiData.avgSpeed} קמ"ש\n` +
+             `עלות לנוסע: ₪${apiData.costPerPax}\n` +
+             `שיא: ${apiData.peakTime}`,
+          cat: 'ridership',
+          _origin: apiData.origin,
+          _dest: apiData.dest
+        };
+      } else {
+        result = {
+          a: `קו ${lineMatch[1]}${cityHint ? ' ב' + cityHint : ''} לא נמצא באשכולות השרון ומטרופולין. הקו לא קיים ברשת השרון/מטרופולין, ייתכן שהוא פועל באשכול אחר (דן, אגד וכו') או שמספרו השתנה.`,
+          cat: 'general'
+        };
+      }
+    }
+  }
+
+  // Try station lookup: "תחנה X" or "תחנת X"
+  const stationMatch = q.match(/תחנ[הת]\s+(.+)/);
+  if (!result && stationMatch) {
+    ansText.innerHTML = '<span style="color:var(--accent-orange)">מחפש נתוני תחנה ב-API...</span>';
+    followups.innerHTML = '';
+    const stData = await lookupStationAPI(stationMatch[1]);
+    if (stData) {
+      result = {
+        a: `תחנה: ${stData.name} (נתוני API 2025)\nסה"כ עולים: ${stData.totalPax.toLocaleString()} (ב-${stData.months} חודשים, ${stData.periods} תקופות יום)`,
+        cat: 'stations'
+      };
+    }
+  }
+
+  // Fallback to Q&A knowledge base
+  if (!result) result = searchQA(q);
+
+  // If still no result and there's a city name — try API route search
+  if (!result && cityHint) {
+    ansText.innerHTML = '<span style="color:var(--accent-orange)">מחפש נתונים על ' + cityHint + ' ב-API...</span>';
+    followups.innerHTML = '';
+    try {
+      const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=e6cfac2f-979a-44fd-b439-ecb116ec0b16&limit=50&q=${encodeURIComponent(cityHint)}&sort=WeeklyPassengers+desc`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.result && data.result.records && data.result.records.length > 0) {
+        const sharonOnly = data.result.records.filter(r => SHARON_FILTER.isMatch(r));
+        const top5 = sharonOnly.slice(0, 5);
+        result = {
+          a: `קווים מובילים ב${cityHint} (נתוני API 2024-2025):\n` +
+             top5.map((r, i) => `${i+1}. קו ${r.RouteName} (${r.AgencyName}) ${r.OriginCityName}→${r.DestinationCityName}: ${(r.WeeklyPassengers||0).toLocaleString()} נוסעים/שבוע, ${(r.AverageSpeed||0).toFixed(1)} קמ"ש`).join('\n'),
+          cat: 'ridership'
+        };
+      }
+    } catch(e) {}
+  }
+
+  if (result) {
+    ansText.textContent = result.a;
+    // Context-aware follow-ups
+    const contextFollowups = buildFollowups(result, lineMatch, cityHint);
+    followups.innerHTML = '<span style="color:var(--text-muted);font-size:0.75rem;margin-left:6px;">שאלות המשך:</span>' +
+      contextFollowups.map(f => `<button class="claude-followup" onclick="claudeAsk('${f}')">${f}</button>`).join('');
+  } else {
+    ansText.textContent = 'לא מצאתי מידע ספציפי על השאלה הזו. נסו לשאול על קווים (למשל "קו 14"), תחנות ("תחנה רעננה"), או ערים ספציפיות.';
+    followups.innerHTML = '<span style="color:var(--text-muted);font-size:0.75rem;margin-left:6px;">נסו:</span>' +
+      ['מהו הקו העמוס ביותר?','מה הפער הכי חשוב?','כמה נוסעים יש בקו 501?'].map(f =>
+        `<button class="claude-followup" onclick="claudeAsk('${f}')">${f}</button>`
+      ).join('');
+  }
+
+  // Update top suggestions to be contextual too
+  updateSuggestions(result, lineMatch, cityHint);
+  area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function buildFollowups(result, lineMatch, cityHint) {
+  const fups = [];
+  // If answer was about a specific line
+  if (lineMatch) {
+    const num = lineMatch[1];
+    const origin = result._origin || '';
+    const dest = result._dest || '';
+    fups.push(`מה המהירות של קו ${num}?`);
+    if (origin) fups.push(`איזה קו הכי חזק ב${origin}?`);
+    if (dest && dest !== origin) fups.push(`איזה קו הכי חזק ב${dest}?`);
+    fups.push(`יש קווים מתחרים לקו ${num}?`);
+    if (!origin) fups.push('אילו קווים חדשים מוצעים?');
+  }
+  // If answer was about a city
+  else if (cityHint) {
+    fups.push(`איזה קו הכי חזק ב${cityHint}?`);
+    fups.push(`כמה נוסעים נוסעים מ${cityHint} לתל אביב?`);
+    fups.push(`מה הפערים ב${cityHint}?`);
+  }
+  // General category fallback
+  else {
+    const cat = result.cat || 'general';
+    fups.push(...(FOLLOWUPS[cat] || FOLLOWUPS.general));
+  }
+  return fups.slice(0, 3);
+}
+
+function claudeClose() {
+  document.getElementById('claudeAnswerArea').style.display = 'none';
+}
+
+function updateSuggestions(lastResult, lineMatch, cityHint) {
+  const el = document.getElementById('claudeSuggestions');
+  const suggestions = [];
+
+  // Add context-specific suggestions first
+  if (lineMatch) {
+    const num = lineMatch[1];
+    suggestions.push(`מה לגבי קו ${num}?`, `תחנות של קו ${num}`);
+  }
+  if (cityHint) {
+    suggestions.push(`קווים ב${cityHint}`, `מה הפערים ב${cityHint}?`);
+  }
+
+  // Fill rest from other categories
+  const usedCat = lastResult ? lastResult.cat : null;
+  Object.keys(FOLLOWUPS).forEach(cat => {
+    if (cat !== usedCat && FOLLOWUPS[cat]) suggestions.push(FOLLOWUPS[cat][0]);
+  });
+
+  // Deduplicate
+  const unique = [...new Set(suggestions)].slice(0, 6);
+  el.innerHTML = unique.map(q =>
+    `<button class="claude-chip" onclick="claudeAsk(this.textContent)">${q}</button>`
+  ).join('');
+}
+
+function initChat() {
+  // Initial suggestions already in HTML
+}
+
+// ==================== LIVE DATA (data.gov.il APIs) ====================
+const API_BASE = 'https://data.gov.il/api/3/action/datastore_search';
+const SHARON_CLUSTERS = ['השרון', 'שרון'];
+const SHARON_CITIES = ['נתניה','הרצליה','הרצלייה','רעננה','כפר סבא','רמת השרון','הוד השרון','כפר יונה'];
+const SHARON_STATIONS_SEARCH = ['נתניה','רעננה','הרצליה','כפר סבא','הוד השרון','רמת השרון'];
+const TRAIN_STATIONS = ['נתניה','הרצליה','כפר סבא נורדאו','רעננה דרום','רעננה מערב'];
+
+async function apiFetch(resourceId, params = {}) {
+  const url = new URL(API_BASE);
+  url.searchParams.set('resource_id', resourceId);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : v));
+  const resp = await fetch(url);
+  const data = await resp.json();
+  return data.result;
+}
+
+async function loadLiveData() {
+  const status = document.getElementById('apiStatus');
+  try {
+    // Run all API calls in parallel
+    const [routesData, stationData, tripsData, trainData] = await Promise.all([
+      loadRoutes(),
+      loadStationPassengers(),
+      loadTrips(),
+      loadTrainPerformance()
+    ]);
+    status.textContent = 'מעודכן';
+    status.className = 'badge badge-green';
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('apiTimestamp').textContent =
+      `עדכון אחרון: ${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  } catch (e) {
+    console.error('API error:', e);
+    status.textContent = 'שגיאה בטעינה';
+    status.className = 'badge badge-red';
+  }
+}
+
+// --- API 1: Bus Routes (e6cfac2f) ---
+async function loadRoutes() {
+  const allRoutes = [];
+  // Search for Sharon/Metropolin routes
+  for (const q of ['מטרופולין שרון', 'שרון', 'השרון']) {
+    try {
+      const result = await apiFetch('e6cfac2f-979a-44fd-b439-ecb116ec0b16', { q: q, limit: 200 });
+      if (result && result.records) allRoutes.push(...result.records.filter(r => SHARON_FILTER.isMatch(r)));
+    } catch(e) {}
+  }
+
+  // Deduplicate by RouteID
+  const seen = new Set();
+  const unique = allRoutes.filter(r => {
+    if (seen.has(r.RouteID)) return false;
+    seen.add(r.RouteID);
+    return true;
+  });
+
+  // Sort by WeeklyPassengers desc
+  unique.sort((a, b) => (b.WeeklyPassengers || 0) - (a.WeeklyPassengers || 0));
+
+  // Live KPIs
+  const totalRoutes = unique.length;
+  const totalWeeklyPax = unique.reduce((s, r) => s + (r.WeeklyPassengers || 0), 0);
+  const totalWeeklyKm = unique.reduce((s, r) => s + (r.WeeklyKM || 0), 0);
+  const avgSpeed = unique.filter(r => r.AverageSpeed > 0).reduce((s, r, _, a) => s + r.AverageSpeed / a.length, 0);
+
+  document.getElementById('liveKpiGrid').innerHTML = `
+    <div class="kpi-card" style="border-color:var(--accent-green)">
+      <div class="kpi-icon">🟢</div>
+      <div class="kpi-value" style="color:var(--accent-green)">${totalRoutes}</div>
+      <div class="kpi-label">קווים פעילים בשרון (2025)</div>
+    </div>
+    <div class="kpi-card" style="border-color:var(--accent-green)">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-value" style="color:var(--accent-green)">${totalWeeklyPax.toLocaleString()}</div>
+      <div class="kpi-label">נוסעים/שבוע (API)</div>
+    </div>
+    <div class="kpi-card" style="border-color:var(--accent-green)">
+      <div class="kpi-icon">📏</div>
+      <div class="kpi-value" style="color:var(--accent-green)">${Math.round(totalWeeklyKm).toLocaleString()}</div>
+      <div class="kpi-label">ק"מ/שבוע (API)</div>
+    </div>
+    <div class="kpi-card" style="border-color:var(--accent-green)">
+      <div class="kpi-icon">⚡</div>
+      <div class="kpi-value" style="color:var(--accent-green)">${avgSpeed.toFixed(1)}</div>
+      <div class="kpi-label">מהירות ממוצעת (קמ"ש)</div>
+    </div>
+  `;
+
+  // Routes table
+  const top30 = unique.slice(0, 30);
+  const tbody = document.querySelector('#liveRoutesTable tbody');
+  tbody.innerHTML = top30.map(r => `
+    <tr>
+      <td><strong>${r.RouteName || r.RouteID}</strong></td>
+      <td style="font-size:0.78rem">${r.AgencyName || ''}</td>
+      <td style="font-size:0.78rem">${r.OriginCityName || ''}</td>
+      <td style="font-size:0.78rem">${r.DestinationCityName || ''}</td>
+      <td>${(r.WeeklyPassengers || 0).toLocaleString()}</td>
+      <td>${Math.round(r.WeeklyKM || 0).toLocaleString()}</td>
+      <td><span class="badge ${(r.AverageSpeed||0) < 18 ? 'badge-red' : 'badge-green'}">${(r.AverageSpeed || 0).toFixed(1)}</span></td>
+    </tr>
+  `).join('');
+}
+
+// --- API 2: Station Passengers (b2c6b258) ---
+async function loadStationPassengers() {
+  const stationData = [];
+  for (const name of SHARON_FILTER.cities.slice(0, 8)) {
+    try {
+      const result = await apiFetch('b2c6b258-4638-4f8e-bcad-600f0cdfb449', {
+        q: name, limit: 50,
+        filters: { year_key: 2025 }
+      });
+      if (result && result.records) {
+        result.records.forEach(rec => {
+          // Sum all day_1..day_31
+          let total = 0, count = 0;
+          for (let d = 1; d <= 31; d++) {
+            const v = rec['day_' + d];
+            if (v != null && v !== '' && !isNaN(v)) { total += Number(v); count++; }
+          }
+          if (count > 0) {
+            stationData.push({
+              station: rec.StationName,
+              period: rec.LowOrPeakDescFull,
+              month: rec.month_key,
+              total: total,
+              avg: Math.round(total / count)
+            });
+          }
+        });
+      }
+    } catch(e) {}
+  }
+
+  // Aggregate by station (sum total across all periods/months)
+  const byStation = {};
+  stationData.forEach(d => {
+    if (!byStation[d.station]) byStation[d.station] = 0;
+    byStation[d.station] += d.total;
+  });
+
+  const sorted = Object.entries(byStation).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  if (sorted.length === 0) return;
+
+  // Chart
+  const ctx = document.getElementById('liveStationChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(s => s[0].substring(0, 25)),
+      datasets: [{
+        label: 'עולים (סה"כ 2025)',
+        data: sorted.map(s => s[1]),
+        backgroundColor: '#f59e0b',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#e2e8f0', font: { size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// --- API 3: Trips (58593e9b) ---
+async function loadTrips() {
+  // Load trip data for Sharon clusters
+  let totalTrips = 0;
+  for (const city of ['נתניה', 'הרצליה', 'רעננה', 'כפר סבא']) {
+    try {
+      const result = await apiFetch('58593e9b-2d71-4c39-8663-b34ab29607ab', {
+        q: city, limit: 5
+      });
+      if (result) totalTrips += result.total || 0;
+    } catch(e) {}
+  }
+  // This data is reflected in the live KPI grid via routes
+}
+
+// --- API 4: Train Performance (1ebbbb91) — latest data ---
+async function loadTrainPerformance() {
+  const SHARON_TRAIN_STATIONS = SHARON_FILTER.trainStations;
+  const byStation = {};
+
+  for (const station of SHARON_TRAIN_STATIONS) {
+    try {
+      const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=1ebbbb91-1d44-4f41-a85c-4a93a35e32d6&limit=50&q=${encodeURIComponent(station)}&sort=shana+desc,hodesh+desc`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.result && data.result.records) {
+        // Find latest year+month
+        const recs = data.result.records;
+        if (recs.length === 0) continue;
+        const latestYear = recs[0].shana;
+        const latestMonth = recs[0].hodesh;
+        // Get last 3 months of data for more robust numbers
+        const recent = recs.filter(r => r.shana === latestYear || (r.shana === latestYear - 1 && r.hodesh >= 10));
+
+        recent.forEach(r => {
+          const name = r.train_station_nm;
+          if (!name) return;
+          if (!byStation[name]) byStation[name] = { ontime: 0, late: 0, early: 0, total: 0, latestYear, latestMonth };
+          const count = r.status_count || 0;
+          byStation[name].total += count;
+          const status = r.station_status_nm || '';
+          if (status.includes('בזמן')) byStation[name].ontime += count;
+          else if (status.includes('איחור')) byStation[name].late += count;
+          else if (status.includes('הקדמה')) byStation[name].early += count;
+        });
+      }
+    } catch(e) {}
+  }
+
+  const rows = Object.entries(byStation)
+    .map(([name, d]) => ({ station: name, ontime: d.ontime, late: d.late, pct: d.total > 0 ? Math.round(d.ontime / d.total * 100) : 0 }))
+    .filter(r => r.ontime + r.late > 0)
+    .sort((a, b) => b.ontime - a.ontime);
+
+  if (rows.length === 0) return;
+
+  const tbody = document.querySelector('#liveTrainTable tbody');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.station}</td>
+      <td>${r.ontime.toLocaleString()}</td>
+      <td>${r.late.toLocaleString()}</td>
+      <td><span class="badge ${r.pct >= 90 ? 'badge-green' : r.pct >= 80 ? 'badge-orange' : 'badge-red'}">${r.pct}%</span></td>
+    </tr>
+  `).join('');
+}
+
+// ==================== FILTERS ====================
+function populateCityFilter() {
+  const cities = ['נתניה','הרצליה','כפר סבא','רמת השרון','הוד השרון','טירה','טייבה','קלנסווה','כוכב יאיר','צור יגאל'];
+  const sel = document.getElementById('cityFilter');
+  cities.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    sel.appendChild(opt);
+  });
+}
+
+function applyFilters() {
+  // Filters re-center the map on selected city
+  const city = document.getElementById('cityFilter').value;
+  const cityCenters = {
+    'נתניה': [32.33, 34.86], 'הרצליה': [32.16, 34.79], 'רמת השרון': [32.15, 34.84],
+    'רעננה': [32.19, 34.87], 'כפר סבא': [32.18, 34.91], 'הוד השרון': [32.15, 34.89],
+    'טירה': [32.23, 34.95], 'טייבה': [32.27, 35.01], 'קלנסווה': [32.28, 34.98],
+    'כוכב יאיר': [32.22, 34.97], 'צור יגאל': [32.23, 34.95]
+  };
+  if (city !== 'all' && cityCenters[city]) {
+    map.setView(cityCenters[city], 14);
+  } else {
+    map.setView([32.15, 34.83], 11);
+  }
+}
+
+</script>
+</body>
+</html>
