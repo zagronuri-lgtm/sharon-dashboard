@@ -1178,7 +1178,7 @@ function initMap() {
   const devGroup = L.layerGroup();
   const deviations = [
     {
-      line: '601', corridor: 'נתניה → ת"א',
+      line: '601', corridor: 'נתניה → ת"א', color: '#3b82f6', currentColor: '#1e40af',
       title: 'הסטת קו 601 בתוך ת"א — מדיזנגוף לאבן גבירול',
       competitors_detail: 'דן 4 (35,439/שב) שולט על ציר דיזנגוף. קו 601 נכנס לת"א ומתחרה ישירות עם דן 4 על אותו ציר.',
       what_to_do: 'הסטת המסלול בכניסה לת"א מרח\' דיזנגוף → לרח\' אבן גבירול / שד\' נמיר. הסטה של ~500 מטר מזרחה.',
@@ -1191,7 +1191,7 @@ function initMap() {
       color: '#f59e0b'
     },
     {
-      line: '605', corridor: 'נתניה → ת"א',
+      line: '605', corridor: 'נתניה → ת"א', color: '#10b981', currentColor: '#065f46',
       title: 'הסטת קו 605 בכניסה לת"א — מנמיר ליד חרוצים',
       competitors_detail: 'דן 5 (25,434/שב) ודן 8 (26,676/שב) מכסים את צפון ת"א. אגד 852 (8,770/שב) מתחרה על כל הציר.',
       what_to_do: 'במקום להיכנס דרך נמיר/אבן גבירול (שם דן חזק), להסיט דרך יד חרוצים / המסגר — אזור תעסוקה עם 1,123 עולים בסקר.',
@@ -1204,7 +1204,7 @@ function initMap() {
       color: '#f59e0b'
     },
     {
-      line: '501', corridor: 'רעננה → ת"א',
+      line: '501', corridor: 'רעננה → ת"א', color: '#8b5cf6', currentColor: '#4c1d95',
       title: 'הסטת קו 501 בת"א — מבגין לקפלן/שאול המלך',
       competitors_detail: 'דן 66 (37,646/שב) ודן 82 (34,400/שב) שולטים על ציר בגין/גהה מזרחה. קו 501 נכנס מאותו כיוון.',
       what_to_do: 'אחרי עזריאלי, במקום להמשיך בבגין, להסיט לשד\' שאול המלך / קפלן. אזור ביקוש עסקי ענק פחות מכוסה.',
@@ -1217,7 +1217,7 @@ function initMap() {
       color: '#f59e0b'
     },
     {
-      line: '24', corridor: 'ר"ה → ת"א',
+      line: '24', corridor: 'ר"ה → ת"א', color: '#f59e0b', currentColor: '#92400e',
       title: 'הסטת קו 24 בת"א — מנמיר לבן גוריון/ארלוזורוב',
       competitors_detail: 'דן 4 (35,439/שב) ודן 5 (25,434/שב) מכסים דיזנגוף ואבן גבירול. קו 24 יורד בנמיר ומתחרה על אותם נוסעים.',
       what_to_do: 'מצומת הכפר הירוק — הסטה קלה מערבה לרח\' בן גוריון / ארלוזורוב. אזור מגורים צפוף שדן פחות מכסה.',
@@ -1230,7 +1230,7 @@ function initMap() {
       color: '#f59e0b'
     },
     {
-      line: '126', corridor: 'חולון → ת"א',
+      line: '126', corridor: 'חולון → ת"א', color: '#ef4444', currentColor: '#7f1d1d',
       title: 'הסטת קו 126 בכניסה לת"א — מלה גוארדיה לדרך שלמה',
       competitors_detail: 'דן 25 (30,883/שב), דן 172 (33,775/שב), אגד 171 (24,553/שב) — שלושה מתחרים כבדים על ציר חולון→ת"א.',
       what_to_do: 'שלושה קווים מתחרים על אותו ציר! הסטה לדרך שלמה / יפת → אזור יפו העתיקה + נמל יפו. אזור תיירות ותעסוקה ללא כיסוי ישיר מחולון.',
@@ -1243,7 +1243,7 @@ function initMap() {
       color: '#f59e0b'
     },
     {
-      line: '149', corridor: 'כ"ס → ת"א',
+      line: '149', corridor: 'כ"ס → ת"א', color: '#ec4899', currentColor: '#831843',
       title: 'הסטת קו 149 בת"א — מגהה לרמת החייל',
       competitors_detail: 'דן 66 (37,646/שב) שולט על ציר גהה/בגין. קו 149 נכנס מאותו כיוון בדיוק.',
       what_to_do: 'הסטה דרך רמת החייל / שכ\' עתידים — אזור הייטק ענק (מגדלי עתידים, BMW, וכו\'). אין קו ישיר מכ"ס/השרון.',
@@ -1258,14 +1258,14 @@ function initMap() {
   ];
 
   deviations.forEach(d => {
-    // Current path (gray, thin)
+    // Current path (darker shade of line color)
     L.polyline(d.currentPath.map(p => [p[1], p[0]]), {
-      color: '#64748b', weight: 2.5, opacity: 0.4
-    }).bindPopup(`<strong>קו ${d.line} — מסלול נוכחי בת"א</strong>`).addTo(devGroup);
+      color: d.currentColor, weight: 3.5, opacity: 0.7
+    }).bindPopup(`<strong style="color:${d.currentColor}">קו ${d.line} — מסלול נוכחי בת"א</strong>`).addTo(devGroup);
 
-    // Deviation path (orange, thick)
+    // Deviation path (bright line color, dashed)
     L.polyline(d.deviationPath.map(p => [p[1], p[0]]), {
-      color: d.color, weight: 5, opacity: 0.9, dashArray: '10 6'
+      color: d.color, weight: 5.5, opacity: 0.95, dashArray: '10 6'
     }).bindPopup(
       `<div style="direction:rtl;min-width:280px;max-width:350px;line-height:1.6">` +
       `<div style="font-size:1rem;font-weight:700;color:#f59e0b;margin-bottom:8px">🔀 ${d.title}</div>` +
@@ -1286,7 +1286,7 @@ function initMap() {
 
     // Deviation zone — clickable circle with same detailed popup
     const zoneMarker = L.circleMarker([d.deviationZone[1], d.deviationZone[0]], {
-      radius: 16, fillColor: '#f59e0b', fillOpacity: 0.3, color: '#f59e0b', weight: 2.5
+      radius: 16, fillColor: d.color, fillOpacity: 0.3, color: d.color, weight: 2.5
     }).bindPopup(
       `<div style="direction:rtl;min-width:280px;max-width:350px;line-height:1.6">` +
       `<div style="font-size:1rem;font-weight:700;color:#f59e0b;margin-bottom:8px">🔀 ${d.title}</div>` +
@@ -1309,7 +1309,7 @@ function initMap() {
     L.marker([d.deviationZone[1], d.deviationZone[0]], {
       icon: L.divIcon({
         className: 'dev-label',
-        html: `<span style="background:rgba(245,158,11,0.92);color:#000;font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3)">🔀 קו ${d.line}</span>`,
+        html: `<span style="background:${d.color};color:#fff;font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3)">🔀 קו ${d.line}</span>`,
         iconSize: [90, 22], iconAnchor: [45, -12]
       })
     }).addTo(devGroup);
