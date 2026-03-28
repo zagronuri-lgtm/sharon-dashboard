@@ -450,7 +450,7 @@ tbody tr:hover { background: rgba(59, 130, 246, 0.08); }
   border: 1px solid var(--accent-blue) !important;
 }
 .leaflet-popup-tip { background: #ffffff !important; }
-.leaflet-popup-content { font-size: 0.85rem !important; direction: rtl !important; }
+.leaflet-popup-content { font-size: 0.85rem !important; direction: rtl !important; max-width: 380px !important; }
 </style>
 </head>
 <body>
@@ -1140,26 +1140,38 @@ function initMap() {
   });
   layers.heatmap = heatGroup;
 
-  // ========= COMPETITORS LAYER =========
+  // ========= COMPETITORS LAYER (דן + אגד בתוך ת"א) =========
   const compGroup = L.layerGroup();
-  // Kavim lines competing on Netanya-TA corridor
   const competitors = [
-    { name: 'קווים 635 (בת חפר→ת"א)', color: '#ef4444', pax: 1757,
-      coords: [[34.87, 32.36], [34.86, 32.33], [34.83, 32.25], [34.80, 32.17], [34.78, 32.07]] },
-    { name: 'קווים 632 (חריש→ת"א)', color: '#ef4444', pax: 1583,
-      coords: [[35.04, 32.46], [34.95, 32.38], [34.86, 32.33], [34.80, 32.17], [34.78, 32.07]] },
-    { name: 'קווים 299 (אום אל פחם→ת"א)', color: '#ef4444', pax: 1188,
-      coords: [[35.15, 32.52], [35.04, 32.46], [34.86, 32.33], [34.78, 32.07]] },
-    { name: 'רכבת — קו החוף (נתניה→הרצליה→ת"א)', color: '#dc2626', pax: 0,
-      coords: [[34.86, 32.33], [34.84, 32.27], [34.80, 32.16], [34.79, 32.08]] },
-    { name: 'רכבת — קו השרון (כ"ס→פ"ת→ת"א)', color: '#dc2626', pax: 0,
-      coords: [[34.91, 32.18], [34.88, 32.19], [34.88, 32.09], [34.79, 32.08]] }
+    { name: 'דן 4', pax: 35439, desc: 'בן יהודה/דיזנגוף צ-ד', color: '#ef4444',
+      coords: [[34.770, 32.092], [34.774, 32.084], [34.773, 32.075], [34.770, 32.063]] },
+    { name: 'דן 5', pax: 25434, desc: 'אבן גבירול צ-ד', color: '#ef4444',
+      coords: [[34.782, 32.095], [34.783, 32.085], [34.782, 32.075], [34.780, 32.063]] },
+    { name: 'דן 8', pax: 26676, desc: 'ז\'בוטינסקי/קפלן מ-ד', color: '#ef4444',
+      coords: [[34.794, 32.088], [34.790, 32.080], [34.786, 32.072], [34.780, 32.063]] },
+    { name: 'דן 66', pax: 37646, desc: 'ת"א→פ"ת דרך גהה/ז\'בוטינסקי', color: '#ef4444',
+      coords: [[34.780, 32.070], [34.790, 32.078], [34.810, 32.082], [34.830, 32.085], [34.880, 32.090]] },
+    { name: 'דן 82', pax: 34400, desc: 'ת"א→פ"ת דרך ז\'בוטינסקי', color: '#ef4444',
+      coords: [[34.780, 32.070], [34.795, 32.078], [34.820, 32.083], [34.860, 32.088]] },
+    { name: 'דן 25', pax: 30883, desc: 'ת"א→חולון דרך לה גוארדיה', color: '#ef4444',
+      coords: [[34.780, 32.070], [34.785, 32.060], [34.785, 32.050], [34.778, 32.040]] },
+    { name: 'דן 172', pax: 33775, desc: 'ת"א→חולון/בת ים', color: '#ef4444',
+      coords: [[34.780, 32.065], [34.780, 32.055], [34.775, 32.045], [34.770, 32.035]] },
+    { name: 'אגד 171', pax: 24553, desc: 'ת"א→חולון (מתחרה ישיר לקו 126)', color: '#f97316',
+      coords: [[34.778, 32.068], [34.778, 32.058], [34.776, 32.048], [34.772, 32.038]] },
+    { name: 'אגד 852', pax: 8770, desc: 'ת"א→נתניה→חדרה (מתחרה ל-605/601)', color: '#f97316',
+      coords: [[34.780, 32.070], [34.790, 32.100], [34.800, 32.160], [34.850, 32.330]] }
   ];
   competitors.forEach(c => {
-    const latlngs = c.coords.map(p => [p[1], p[0]]);
-    L.polyline(latlngs, { color: c.color, weight: 3, opacity: 0.7, dashArray: '4 8' })
-      .bindPopup(`<strong>מתחרה: ${c.name}</strong>${c.pax ? '<br>נוסעים/שבוע: ' + c.pax.toLocaleString() : '<br>רכבת ישראל'}`)
-      .addTo(compGroup);
+    L.polyline(c.coords.map(p => [p[1], p[0]]), {
+      color: c.color, weight: 3.5, opacity: 0.7, dashArray: '6 6'
+    }).bindPopup(
+      `<div style="direction:rtl;min-width:200px">` +
+      `<strong style="color:${c.color}">מתחרה: ${c.name}</strong><br>` +
+      `<span style="color:#94a3b8">${c.desc}</span><br>` +
+      `<strong>${c.pax.toLocaleString()}</strong> נוסעים/שבוע` +
+      `</div>`
+    ).addTo(compGroup);
   });
   layers.competitors = compGroup;
 
@@ -1167,63 +1179,81 @@ function initMap() {
   const devGroup = L.layerGroup();
   const deviations = [
     {
-      id: 1, line: '601', corridor: 'נתניה↔ת"א',
-      title: 'הסטת קו 601 דרך עיר ימים/אחיסמך',
-      reason: 'מתחרים: קווים 635 + רכבת החוף. אלפי יח"ד חדשות בדרום נתניה ללא שירות ישיר',
-      expected: '+800-1,200 נוסעים/שבוע',
-      currentPath: [[34.86, 32.33], [34.85, 32.28], [34.83, 32.20], [34.80, 32.16], [34.78, 32.08]],
-      deviationPath: [[34.86, 32.33], [34.84, 32.31], [34.83, 32.28], [34.83, 32.20], [34.80, 32.16], [34.78, 32.08]],
-      deviationZone: [34.84, 32.30],
+      line: '601', corridor: 'נתניה → ת"א',
+      title: 'הסטת קו 601 בתוך ת"א — מדיזנגוף לאבן גבירול',
+      competitors_detail: 'דן 4 (35,439/שב) שולט על ציר דיזנגוף. קו 601 נכנס לת"א ומתחרה ישירות עם דן 4 על אותו ציר.',
+      what_to_do: 'הסטת המסלול בכניסה לת"א מרח\' דיזנגוף → לרח\' אבן גבירול / שד\' נמיר. הסטה של ~500 מטר מזרחה.',
+      where_exactly: 'מצומת דיזנגוף/ארלוזורוב עד ת. מרכזית — במקום להמשיך בדיזנגוף, לפנות לאבן גבירול.',
+      expected: '+600-1,000 נוסעים/שבוע',
+      roi: 'דן 4 מסיע 35K/שב על דיזנגוף. אבן גבירול פחות מכוסה בשעות שיא. הנוסעים שעולים ברח\' אבן גבירול היום חייבים ללכת לדיזנגוף — ההסטה תלכוד אותם.',
+      currentPath: [[34.773, 32.092], [34.774, 32.084], [34.774, 32.076], [34.778, 32.065]],
+      deviationPath: [[34.773, 32.092], [34.780, 32.088], [34.782, 32.080], [34.780, 32.072], [34.778, 32.065]],
+      deviationZone: [34.781, 32.083],
       color: '#f59e0b'
     },
     {
-      id: 2, line: '608', corridor: 'נתניה↔ת"א',
-      title: 'הסטת קו 608 דרך כפר יונה',
-      reason: 'מתחרה: רכבת החוף (49% מנוסעי 608 יכולים לנסוע ברכבת). הסטה דרך כפר יונה תלכוד אוכלוסייה ללא חלופה',
-      expected: '+500-800 נוסעים/שבוע (נטו אחרי איבוד)',
-      currentPath: [[34.86, 32.33], [34.85, 32.27], [34.80, 32.16], [34.78, 32.08]],
-      deviationPath: [[34.86, 32.33], [34.88, 32.32], [34.89, 32.30], [34.87, 32.27], [34.80, 32.16], [34.78, 32.08]],
-      deviationZone: [34.88, 32.31],
+      line: '605', corridor: 'נתניה → ת"א',
+      title: 'הסטת קו 605 בכניסה לת"א — מנמיר ליד חרוצים',
+      competitors_detail: 'דן 5 (25,434/שב) ודן 8 (26,676/שב) מכסים את צפון ת"א. אגד 852 (8,770/שב) מתחרה על כל הציר.',
+      what_to_do: 'במקום להיכנס דרך נמיר/אבן גבירול (שם דן חזק), להסיט דרך יד חרוצים / המסגר — אזור תעסוקה עם 1,123 עולים בסקר.',
+      where_exactly: 'מהכפר הירוק — במקום נמיר דרומה, לפנות לכיוון יד חרוצים/המסגר → ת. מרכזית.',
+      expected: '+800-1,400 נוסעים/שבוע',
+      roi: 'יד חרוצים = צומת תעסוקה (1,123 עולים בסקר). רוב העובדים מגיעים מהשרון. דן לא מכסה את הציר הזה ישירות מהצפון. הסטה קטנה תלכוד שוק שלם.',
+      currentPath: [[34.800, 32.120], [34.795, 32.100], [34.790, 32.085], [34.778, 32.065]],
+      deviationPath: [[34.800, 32.120], [34.795, 32.100], [34.792, 32.090], [34.788, 32.082], [34.784, 32.074], [34.778, 32.065]],
+      deviationZone: [34.788, 32.082],
       color: '#f59e0b'
     },
     {
-      id: 3, line: '91', corridor: 'הרצליה↔ת"א',
-      title: 'הסטת קו 91 דרך הרצליה פיתוח',
-      reason: 'מתחרה: רכבת הרצליה. הרצליה פיתוח = אלפי משרות הייטק, עובדים מגיעים ברכב פרטי בהיעדר שירות אחרון-מייל',
-      expected: '+1,000-1,500 נוסעים/שבוע',
-      currentPath: [[34.79, 32.16], [34.79, 32.13], [34.79, 32.08]],
-      deviationPath: [[34.79, 32.16], [34.79, 32.165], [34.78, 32.155], [34.77, 32.15], [34.79, 32.13], [34.79, 32.08]],
-      deviationZone: [34.78, 32.155],
+      line: '501', corridor: 'רעננה → ת"א',
+      title: 'הסטת קו 501 בת"א — מבגין לקפלן/שאול המלך',
+      competitors_detail: 'דן 66 (37,646/שב) ודן 82 (34,400/שב) שולטים על ציר בגין/גהה מזרחה. קו 501 נכנס מאותו כיוון.',
+      what_to_do: 'אחרי עזריאלי, במקום להמשיך בבגין, להסיט לשד\' שאול המלך / קפלן. אזור ביקוש עסקי ענק פחות מכוסה.',
+      where_exactly: 'מצומת עזריאלי — במקום בגין דרומה, לפנות לקפלן / שאול המלך / הארבעה.',
+      expected: '+500-900 נוסעים/שבוע',
+      roi: 'קפלן/שאול המלך = ליבת העסקים של ת"א (בורסה, משרדים). דן מכסה חלקית עם קו 8, אך לא ישירות מהשרון. נוסעי רעננה/כ"ס שעובדים שם צריכים העברה היום.',
+      currentPath: [[34.791, 32.085], [34.790, 32.078], [34.788, 32.072], [34.785, 32.065]],
+      deviationPath: [[34.791, 32.085], [34.790, 32.078], [34.786, 32.075], [34.783, 32.070], [34.785, 32.065]],
+      deviationZone: [34.785, 32.073],
       color: '#f59e0b'
     },
     {
-      id: 4, line: '575', corridor: 'כ"ס↔ת"א',
-      title: 'הסטת קו 575 דרך הוד השרון מזרח',
-      reason: 'הוד השרון = ישוב פרוורי עם קישוריות חלשה. שכונות מזרח ללא גישה לקו ישיר לת"א',
-      expected: '+600-900 נוסעים/שבוע',
-      currentPath: [[34.91, 32.18], [34.88, 32.16], [34.85, 32.13], [34.79, 32.08]],
-      deviationPath: [[34.91, 32.18], [34.90, 32.16], [34.89, 32.155], [34.88, 32.15], [34.85, 32.13], [34.79, 32.08]],
-      deviationZone: [34.89, 32.155],
+      line: '24', corridor: 'ר"ה → ת"א',
+      title: 'הסטת קו 24 בת"א — מנמיר לבן גוריון/ארלוזורוב',
+      competitors_detail: 'דן 4 (35,439/שב) ודן 5 (25,434/שב) מכסים דיזנגוף ואבן גבירול. קו 24 יורד בנמיר ומתחרה על אותם נוסעים.',
+      what_to_do: 'מצומת הכפר הירוק — הסטה קלה מערבה לרח\' בן גוריון / ארלוזורוב. אזור מגורים צפוף שדן פחות מכסה.',
+      where_exactly: 'מתחנת רכבת סבידור — במקום להמשיך בנמיר, לפנות לארלוזורוב מערבה → בן גוריון → ת. מרכזית.',
+      expected: '+400-700 נוסעים/שבוע',
+      roi: 'בן גוריון/ארלוזורוב מערב = שכונות צפופות (לב ת"א צפון) עם בנייני מגורים. דן 4 עובר בדיזנגוף (500מ\' מערבה), דן 5 באבן גבירול — ביניהם יש פער. קו 24 יכול למלא אותו.',
+      currentPath: [[34.795, 32.100], [34.793, 32.092], [34.790, 32.085], [34.778, 32.065]],
+      deviationPath: [[34.795, 32.100], [34.790, 32.093], [34.783, 32.088], [34.778, 32.082], [34.778, 32.065]],
+      deviationZone: [34.784, 32.088],
       color: '#f59e0b'
     },
     {
-      id: 5, line: '532', corridor: 'ר"ה↔ת"א',
-      title: 'הסטת קו 532 דרך גלילות/תע"ש',
-      reason: 'פארק תעסוקה גלילות/תע"ש = עשרות אלפי עובדים. אין קו ישיר מר"ה. רוב מגיעים ברכב',
-      expected: '+700-1,100 נוסעים/שבוע',
-      currentPath: [[34.84, 32.15], [34.81, 32.12], [34.79, 32.08]],
-      deviationPath: [[34.84, 32.15], [34.82, 32.14], [34.80, 32.125], [34.79, 32.115], [34.79, 32.08]],
-      deviationZone: [34.81, 32.13],
+      line: '126', corridor: 'חולון → ת"א',
+      title: 'הסטת קו 126 בכניסה לת"א — מלה גוארדיה לדרך שלמה',
+      competitors_detail: 'דן 25 (30,883/שב), דן 172 (33,775/שב), אגד 171 (24,553/שב) — שלושה מתחרים כבדים על ציר חולון→ת"א.',
+      what_to_do: 'שלושה קווים מתחרים על אותו ציר! הסטה לדרך שלמה / יפת → אזור יפו העתיקה + נמל יפו. אזור תיירות ותעסוקה ללא כיסוי ישיר מחולון.',
+      where_exactly: 'מצומת וולפסון — במקום לה גוארדיה צפונה, לפנות לדרך שלמה / ירושלים (יפו) → ת. מרכזית.',
+      expected: '+700-1,200 נוסעים/שבוע',
+      roi: '3 מתחרים (דן 25, 172 + אגד 171 = 89,000/שב!) על ציר לה גוארדיה. דרך שלמה/יפו = אזור ללא כיסוי ישיר מחולון. פיתוח נדל"ן אגרסיבי ביפו (אלפי יח"ד). שוק פנוי.',
+      currentPath: [[34.778, 32.040], [34.782, 32.050], [34.784, 32.058], [34.778, 32.065]],
+      deviationPath: [[34.778, 32.040], [34.775, 32.048], [34.768, 32.055], [34.765, 32.062], [34.770, 32.068], [34.778, 32.065]],
+      deviationZone: [34.768, 32.055],
       color: '#f59e0b'
     },
     {
-      id: 6, line: '47', corridor: 'רעננה↔ת"א',
-      title: 'הסטת קו 47 דרך פארק תעסוקה רעננה',
-      reason: 'פארק תעסוקה רעננה = ~20,000 משרות. קו 47 עובר בסמוך אך לא נכנס. תחרות: רכבת רעננה דרום',
-      expected: '+800-1,200 נוסעים/שבוע',
-      currentPath: [[34.87, 32.19], [34.85, 32.17], [34.82, 32.14], [34.79, 32.08]],
-      deviationPath: [[34.87, 32.19], [34.86, 32.185], [34.855, 32.178], [34.85, 32.17], [34.82, 32.14], [34.79, 32.08]],
-      deviationZone: [34.858, 32.182],
+      line: '149', corridor: 'כ"ס → ת"א',
+      title: 'הסטת קו 149 בת"א — מגהה לרמת החייל',
+      competitors_detail: 'דן 66 (37,646/שב) שולט על ציר גהה/בגין. קו 149 נכנס מאותו כיוון בדיוק.',
+      what_to_do: 'הסטה דרך רמת החייל / שכ\' עתידים — אזור הייטק ענק (מגדלי עתידים, BMW, וכו\'). אין קו ישיר מכ"ס/השרון.',
+      where_exactly: 'מצומת גהה/הכפר הירוק — במקום גהה ישירות, לפנות דרך רמת החייל → עתידים → ת. מרכזית.',
+      expected: '+900-1,500 נוסעים/שבוע',
+      roi: 'רמת החייל/עתידים = ~30,000 עובדי הייטק. רובם מהשרון. היום צריכים רכב פרטי כי אין קו ישיר. דן 66 עובר ב-500מ\' אך לא נכנס לפארק עצמו. הסטה קטנה = שוק ענק.',
+      currentPath: [[34.820, 32.095], [34.810, 32.088], [34.800, 32.082], [34.790, 32.076], [34.778, 32.065]],
+      deviationPath: [[34.820, 32.095], [34.810, 32.090], [34.800, 32.094], [34.795, 32.098], [34.790, 32.092], [34.785, 32.080], [34.778, 32.065]],
+      deviationZone: [34.798, 32.095],
       color: '#f59e0b'
     }
   ];
@@ -1231,31 +1261,57 @@ function initMap() {
   deviations.forEach(d => {
     // Current path (gray, thin)
     L.polyline(d.currentPath.map(p => [p[1], p[0]]), {
-      color: '#64748b', weight: 2, opacity: 0.5
-    }).bindPopup(`<strong>קו ${d.line} — מסלול נוכחי</strong>`).addTo(devGroup);
+      color: '#64748b', weight: 2.5, opacity: 0.4
+    }).bindPopup(`<strong>קו ${d.line} — מסלול נוכחי בת"א</strong>`).addTo(devGroup);
 
-    // Deviation path (orange, thick, animated dash)
+    // Deviation path (orange, thick)
     L.polyline(d.deviationPath.map(p => [p[1], p[0]]), {
       color: d.color, weight: 5, opacity: 0.9, dashArray: '10 6'
     }).bindPopup(
-      `<div style="direction:rtl;min-width:220px">` +
-      `<strong style="color:#f59e0b">🔀 ${d.title}</strong><br><br>` +
-      `<strong>מסדרון:</strong> ${d.corridor}<br>` +
-      `<strong>סיבה:</strong> ${d.reason}<br>` +
-      `<strong>צפי:</strong> <span style="color:#10b981">${d.expected}</span>` +
+      `<div style="direction:rtl;min-width:280px;max-width:350px;line-height:1.6">` +
+      `<div style="font-size:1rem;font-weight:700;color:#f59e0b;margin-bottom:8px">🔀 ${d.title}</div>` +
+      `<div style="background:#1e293b;border-radius:8px;padding:10px;margin-bottom:8px">` +
+      `<div style="color:#ef4444;font-weight:600;margin-bottom:4px">🔴 מתחרים:</div>` +
+      `<div style="color:#cbd5e1;font-size:0.82rem">${d.competitors_detail}</div></div>` +
+      `<div style="background:#1e293b;border-radius:8px;padding:10px;margin-bottom:8px">` +
+      `<div style="color:#3b82f6;font-weight:600;margin-bottom:4px">📍 מה לעשות:</div>` +
+      `<div style="color:#cbd5e1;font-size:0.82rem">${d.what_to_do}</div></div>` +
+      `<div style="background:#1e293b;border-radius:8px;padding:10px;margin-bottom:8px">` +
+      `<div style="color:#8b5cf6;font-weight:600;margin-bottom:4px">📌 היכן בדיוק:</div>` +
+      `<div style="color:#cbd5e1;font-size:0.82rem">${d.where_exactly}</div></div>` +
+      `<div style="background:#0f2a1a;border:1px solid #10b981;border-radius:8px;padding:10px">` +
+      `<div style="color:#10b981;font-weight:600;margin-bottom:4px">💰 תמורה צפויה: ${d.expected}</div>` +
+      `<div style="color:#6ee7b7;font-size:0.82rem">${d.roi}</div></div>` +
       `</div>`
     ).addTo(devGroup);
 
-    // Deviation zone marker (pulsing circle)
-    L.circleMarker([d.deviationZone[1], d.deviationZone[0]], {
-      radius: 14, fillColor: '#f59e0b', fillOpacity: 0.25, color: '#f59e0b', weight: 2
-    }).addTo(devGroup);
+    // Deviation zone — clickable circle with same detailed popup
+    const zoneMarker = L.circleMarker([d.deviationZone[1], d.deviationZone[0]], {
+      radius: 16, fillColor: '#f59e0b', fillOpacity: 0.3, color: '#f59e0b', weight: 2.5
+    }).bindPopup(
+      `<div style="direction:rtl;min-width:280px;max-width:350px;line-height:1.6">` +
+      `<div style="font-size:1rem;font-weight:700;color:#f59e0b;margin-bottom:8px">🔀 ${d.title}</div>` +
+      `<div style="background:#1e293b;border-radius:8px;padding:10px;margin-bottom:8px">` +
+      `<div style="color:#ef4444;font-weight:600;margin-bottom:4px">🔴 מתחרים:</div>` +
+      `<div style="color:#cbd5e1;font-size:0.82rem">${d.competitors_detail}</div></div>` +
+      `<div style="background:#1e293b;border-radius:8px;padding:10px;margin-bottom:8px">` +
+      `<div style="color:#3b82f6;font-weight:600;margin-bottom:4px">📍 מה לעשות:</div>` +
+      `<div style="color:#cbd5e1;font-size:0.82rem">${d.what_to_do}</div></div>` +
+      `<div style="background:#1e293b;border-radius:8px;padding:10px;margin-bottom:8px">` +
+      `<div style="color:#8b5cf6;font-weight:600;margin-bottom:4px">📌 היכן בדיוק:</div>` +
+      `<div style="color:#cbd5e1;font-size:0.82rem">${d.where_exactly}</div></div>` +
+      `<div style="background:#0f2a1a;border:1px solid #10b981;border-radius:8px;padding:10px">` +
+      `<div style="color:#10b981;font-weight:600;margin-bottom:4px">💰 תמורה צפויה: ${d.expected}</div>` +
+      `<div style="color:#6ee7b7;font-size:0.82rem">${d.roi}</div></div>` +
+      `</div>`
+    ).addTo(devGroup);
+
     // Label
     L.marker([d.deviationZone[1], d.deviationZone[0]], {
       icon: L.divIcon({
         className: 'dev-label',
-        html: `<span style="background:rgba(245,158,11,0.9);color:#000;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;">🔀 קו ${d.line}</span>`,
-        iconSize: [80, 20], iconAnchor: [40, -10]
+        html: `<span style="background:rgba(245,158,11,0.92);color:#000;font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3)">🔀 קו ${d.line}</span>`,
+        iconSize: [90, 22], iconAnchor: [45, -12]
       })
     }).addTo(devGroup);
   });
