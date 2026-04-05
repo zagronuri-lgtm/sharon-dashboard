@@ -10,7 +10,7 @@ import os
 import glob
 import sys
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENC = 'cp1255'
 
 # --- Helpers ---
